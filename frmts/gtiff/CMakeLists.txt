@@ -66,6 +66,9 @@ endif(GDAL_USE_LIBJPEG_INTERNAL)
 include_directories(${GDAL_ROOT_SOURCE_DIR}/frmts/gtiff/libgeotiff)    
 add_subdirectory(${GDAL_ROOT_SOURCE_DIR}/frmts/gtiff/libgeotiff ${GDAL_ROOT_BINARY_DIR}/frmts/gtiff/libgeotiff)	
 	
+include_directories(${GDAL_ROOT_SOURCE_DIR}/frmts/gtiff/rsmdreader)    
+add_subdirectory(${GDAL_ROOT_SOURCE_DIR}/frmts/gtiff/rsmdreader ${GDAL_ROOT_BINARY_DIR}/frmts/gtiff/rsmdreader)
+	
 set(LIB_HHEADERS
 	gtiff.h
 	gt_citation.h
