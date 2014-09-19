@@ -33,14 +33,19 @@ set(LIB_HHEADERS
 	CPLXML_utils.h
     remote_sensing_metadata.h
     rsmd_reader.h
-    reader_digital_globe.h
     reader_abstract.h
+    reader_digital_globe.h
+    reader_pleiades.h
+    reader_geo_eye.h
 )
 
 set(LIB_CSOURCES
+    CPLXML_utils.cpp
     rsmd_reader.cpp
-    reader_digital_globe.cpp
     reader_abstract.cpp
+    reader_digital_globe.cpp
+    reader_pleiades.cpp
+    reader_geo_eye.cpp
 )
 
 set(GDAL_TARGET_OBJECTS ${GDAL_TARGET_OBJECTS} $<TARGET_OBJECTS:${LIB_NAME}> PARENT_SCOPE)

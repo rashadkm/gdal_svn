@@ -8,7 +8,6 @@
 DigitalGlobe::DigitalGlobe(const char* pszFilename)
 	:RSMDReader(pszFilename, "DigitalGlobe")
 {
-	
 	osIMDSourceFilename = GDALFindAssociatedFile( pszFilename, "IMD", NULL, 0 );
 	osRPBSourceFilename = GDALFindAssociatedFile( pszFilename, "RPB", NULL, 0 );
 	if (osIMDSourceFilename == "" && osRPBSourceFilename == "")
@@ -69,7 +68,6 @@ void DigitalGlobe::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) con
 		if(psisdNode == NULL)
 			printf("isd not found\n");
 
-		CPLStringList szIMDdata;
 		ReadXML(CPLSearchXMLNode(psisdNode, "IMD"), szrImageMetadata);
 	}
 }
@@ -92,7 +90,7 @@ void DigitalGlobe::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLSt
 
 void DigitalGlobe::ReadRPC(RSMDRPC& rRPC) const
 {
-	if (osIMDSourceFilename != "" && osRPBSourceFilename != "")
+	if (osRPBSourceFilename != "")
 	{
 		ReadRPCFromWKT(rRPC);
 	}
