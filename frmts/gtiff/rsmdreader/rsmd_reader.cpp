@@ -12,14 +12,14 @@ RSMDReader* GetRSMDReader(const char* pszFilename, RSDProvider rsdProvider)
 	return NULL;
 };
 
-RSMDReader* GetRSMDReader(const char* pszFilename)
+RSMDReader* GetRSMDReader(const CPLString pszFilename)
 {
-	if(DigitalGlobe(pszFilename).IsFullCompliense())
-		return new DigitalGlobe(pszFilename);
-	if(Pleiades(pszFilename).IsFullCompliense())
-		return new Pleiades(pszFilename);
-	if(GeoEye(pszFilename).IsFullCompliense())
-		return new GeoEye(pszFilename);
+	if(DigitalGlobe(pszFilename.c_str()).IsFullCompliense())
+		return new DigitalGlobe(pszFilename.c_str());
+	if(Pleiades(pszFilename.c_str()).IsFullCompliense())
+		return new Pleiades(pszFilename.c_str());
+	if(GeoEye(pszFilename.c_str()).IsFullCompliense())
+		return new GeoEye(pszFilename.c_str());
 
 	return NULL;
 };
