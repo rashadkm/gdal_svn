@@ -3,6 +3,10 @@
 
 #include "cpl_string.h"
 
+const CPLString const MDPrefix_IMD= "IMD";
+const CPLString const MDPrefix_RPC= "RPC";
+const CPLString const MDPrefix_Common_IMD= "IMAGERY";
+
 typedef struct
 {
 	CPLString lineOffset;
@@ -20,6 +24,7 @@ typedef struct
 	CPLString sampNumCoef;
 	CPLString sampDenCoef;
 } RSMDRPC;
+
 /**
 @brief Metadata reader base class
 */
@@ -46,33 +51,32 @@ public:
 		ReadImageMetadata(szImageMetadata);
 		for(int i = 0; i < szImageMetadata.size(); ++i)
 		{
-			szMetadata.AddString(CPLString().Printf("IMD.%s",szImageMetadata[i]).c_str());
+			szMetadata.AddString(CPLString().Printf("%s.%s",MDPrefix_IMD.c_str(), szImageMetadata[i]).c_str());
 		}
 
 		CPLStringList szCommonImageMetadata;
 		GetCommonImageMetadata(szImageMetadata, szCommonImageMetadata);
 		for(int i = 0; i < szCommonImageMetadata.size(); ++i)
 		{
-			szMetadata.AddString(CPLString().Printf("IMAGERY.%s",szCommonImageMetadata[i]).c_str());
+			szMetadata.AddString(CPLString().Printf("%s.%s",MDPrefix_Common_IMD.c_str(), szCommonImageMetadata[i]).c_str());
 		}
 
 		RSMDRPC szRPC;
 		ReadRPC(szRPC);
-		szMetadata.AddString(CPLString().Printf("RPC.LINE_OFF=%s",szRPC.lineOffset.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("RPC.SAMP_OFF=%s",szRPC.sampOffset.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("RPC.LAT_OFF=%s",szRPC.latOffset.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("RPC.LONG_OFF=%s",szRPC.longOffset.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("RPC.HEIGHT_OFF=%s",szRPC.heightOffset.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("RPC.LINE_SCALE=%s",szRPC.lineScale.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("RPC.SAMP_SCALE=%s",szRPC.sampScale.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("RPC.LAT_SCALE=%s",szRPC.latScale.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("RPC.LONG_SCALE=%s",szRPC.longScale.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("RPC.HEIGHT_SCALE=%s",szRPC.heightScale.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("RPC.LINE_NUM_COEFF=%s",szRPC.lineNumCoef.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("RPC.LINE_DEN_COEFF=%s",szRPC.lineDenCoef.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("RPC.SAMP_NUM_COEFF=%s",szRPC.sampNumCoef.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("RPC.SAMP_DEN_COEFF=%s",szRPC.sampDenCoef.c_str()).c_str());
-
+		szMetadata.AddString(CPLString().Printf("%s.LINE_OFF=%s",MDPrefix_RPC.c_str(), szRPC.lineOffset.c_str()).c_str());
+		szMetadata.AddString(CPLString().Printf("%s.SAMP_OFF=%s",MDPrefix_RPC.c_str(), szRPC.sampOffset.c_str()).c_str());
+		szMetadata.AddString(CPLString().Printf("%s.LAT_OFF=%s",MDPrefix_RPC.c_str(), szRPC.latOffset.c_str()).c_str());
+		szMetadata.AddString(CPLString().Printf("%s.LONG_OFF=%s",MDPrefix_RPC.c_str(), szRPC.longOffset.c_str()).c_str());
+		szMetadata.AddString(CPLString().Printf("%s.HEIGHT_OFF=%s",MDPrefix_RPC.c_str(), szRPC.heightOffset.c_str()).c_str());
+		szMetadata.AddString(CPLString().Printf("%s.LINE_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.lineScale.c_str()).c_str());
+		szMetadata.AddString(CPLString().Printf("%s.SAMP_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.sampScale.c_str()).c_str());
+		szMetadata.AddString(CPLString().Printf("%s.LAT_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.latScale.c_str()).c_str());
+		szMetadata.AddString(CPLString().Printf("%s.LONG_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.longScale.c_str()).c_str());
+		szMetadata.AddString(CPLString().Printf("%s.HEIGHT_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.heightScale.c_str()).c_str());
+		szMetadata.AddString(CPLString().Printf("%s.LINE_NUM_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.lineNumCoef.c_str()).c_str());
+		szMetadata.AddString(CPLString().Printf("%s.LINE_DEN_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.lineDenCoef.c_str()).c_str());
+		szMetadata.AddString(CPLString().Printf("%s.SAMP_NUM_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.sampNumCoef.c_str()).c_str());
+		szMetadata.AddString(CPLString().Printf("%s.SAMP_DEN_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.sampDenCoef.c_str()).c_str());
 		return szMetadata;
 	};
 

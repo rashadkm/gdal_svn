@@ -3,7 +3,7 @@
 #include "reader_pleiades.h"
 
 #include "remote_sensing_metadata.h"
-#include "CPLXML_utils.h"
+#include "utils.h"
 
 Pleiades::Pleiades(const char* pszFilename)
 	:RSMDReader(pszFilename, "Pleiades")

@@ -3,7 +3,7 @@
 #include "reader_geo_eye.h"
 
 #include "remote_sensing_metadata.h"
-#include "CPLXML_utils.h"
+#include "utils.h"
 
 GeoEye::GeoEye(const char* pszFilename)
 	:RSMDReader(pszFilename, "GeoEye")

@@ -7031,7 +7031,7 @@ GDALDataset *GTiffDataset::Open( GDALOpenInfo * poOpenInfo )
 /*      Check for external overviews.                                   */
 /* -------------------------------------------------------------------- */
     poDS->oOvManager.Initialize( poDS, pszFilename, poOpenInfo->GetSiblingFiles() );
-    
+
 	poDS->pRSMDReader = GetRSMDReader(poDS->osFilename);
 
 	/* TODO 
@@ -10813,48 +10813,51 @@ char **GTiffDataset::GetMetadataDomainList()
 char **GTiffDataset::GetMetadata( const char * pszDomain )
 
 {
-	CPLStringList metadata = pRSMDReader->GetMetadata();
-	
-	CPLStringList osIMDMD;
-	CPLStringList osImageryMD;
-	CPLStringList osRPCMD;
+	if (pRSMDReader != NULL)
+	{
+		CPLStringList metadata = pRSMDReader->GetMetadata();
+		
+		CPLStringList osIMDMD;
+		CPLStringList osImageryMD;
+		CPLStringList osRPCMD;
 
-	for( int i = 0; i < metadata.size(); i++ )
-	{
-		//printf( "\t\t >>> metadata: %s\n", metadata[i] );
-		size_t found = CPLString(metadata[i]).rfind("IMD");
-		if (found == 0)
+		for( int i = 0; i < metadata.size(); i++ )
 		{
-			osIMDMD.AddString(metadata[i]);
-			continue;
+			//printf( "\t\t >>> metadata: %s\n", metadata[i] );
+			size_t found = CPLString(metadata[i]).rfind("IMD");
+			if (found == 0)
+			{
+				osIMDMD.AddString(metadata[i]);
+				continue;
+			}
+			found = CPLString(metadata[i]).rfind("IMAGERY");
+			if (found == 0)
+			{
+				osImageryMD.AddString(metadata[i]);
+				continue;
+			}
+			found = CPLString(metadata[i]).rfind("RPC");
+			if (found == 0)
+			{
+				osRPCMD.AddString(metadata[i]);
+				continue;
+			}
 		}
-		found = CPLString(metadata[i]).rfind("IMAGERY");
-		if (found == 0)
+		if(osIMDMD.size() > 0)
 		{
-			osImageryMD.AddString(metadata[i]);
-			continue;
+			osIMDMD.AddNameValue("md_type", "imd");
+			oGTiffMDMD.SetMetadata( osIMDMD.List(), "IMD" );
 		}
-		found = CPLString(metadata[i]).rfind("RPC");
-		if (found == 0)
-		{
-			osRPCMD.AddString(metadata[i]);
-			continue;
-		}
-	}
-	if(osIMDMD.size() > 0)
-	{
-		osIMDMD.AddNameValue("md_type", "imd");
-		oGTiffMDMD.SetMetadata( osIMDMD.List(), "IMD" );
-	}
 
-	if(osImageryMD.size() > 0)
-	{
-		oGTiffMDMD.SetMetadata( osImageryMD.List(), "IMAGERY" );
-	}
+		if(osImageryMD.size() > 0)
+		{
+			oGTiffMDMD.SetMetadata( osImageryMD.List(), "IMAGERY" );
+		}
 
-	if(osRPCMD.size() > 0)
-	{
-		oGTiffMDMD.SetMetadata( osRPCMD.List(), "RPC" );
+		if(osRPCMD.size() > 0)
+		{
+			oGTiffMDMD.SetMetadata( osRPCMD.List(), "RPC" );
+		}
 	}
 
     if( pszDomain != NULL && EQUAL(pszDomain,"ProxyOverviewRequest") )
@@ -11220,11 +11223,14 @@ char **GTiffDataset::GetFileList()
 {
     char **papszFileList = GDALPamDataset::GetFileList();
 	
-	CPLStringList sourseMDFileList = pRSMDReader->GetSourceFileList();
-	for( int i = 0; i < sourseMDFileList.size(); i++ )
+	if(pRSMDReader != NULL)
 	{
-		//printf( "\t\t >>> source file: %s\n", sourseMDFileList[i] );
-		papszFileList = CSLAddString( papszFileList, sourseMDFileList[i]);
+		CPLStringList sourseMDFileList = pRSMDReader->GetSourceFileList();
+		for( int i = 0; i < sourseMDFileList.size(); i++ )
+		{
+			//printf( "\t\t >>> source file: %s\n", sourseMDFileList[i] );
+			papszFileList = CSLAddString( papszFileList, sourseMDFileList[i]);
+		}
 	}
 	/*
     LoadRPCRPB();

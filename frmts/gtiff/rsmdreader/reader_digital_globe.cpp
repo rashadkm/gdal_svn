@@ -3,7 +3,7 @@
 #include "reader_digital_globe.h"
 
 #include "remote_sensing_metadata.h"
-#include "CPLXML_utils.h"
+#include "utils.h"
 
 DigitalGlobe::DigitalGlobe(const char* pszFilename)
 	:RSMDReader(pszFilename, "DigitalGlobe")

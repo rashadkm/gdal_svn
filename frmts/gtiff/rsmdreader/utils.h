@@ -11,4 +11,6 @@ void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues)
 
 void ReadXML(CPLXMLNode* psNode, CPLStringList& szlValues);
 
+const char *CPLParseNameTabValue(const char *pszNameValue, char **ppszKey );
+
 #endif /* _CPLXML_UTILS_H_INCLUDED */
