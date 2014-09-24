@@ -18,6 +18,7 @@ public:
 
 private:
 	CPLString osWKTRPCSourceFilename;
+	CPLString osIMDSourceFilename;
 
 private:
 	const CPLStringList DefineSourceFiles() const;
