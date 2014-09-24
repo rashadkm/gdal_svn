@@ -216,6 +216,14 @@ void Kompsat::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringL
 		}
 		szrCommonImageMetadata.AddString(pszMD.c_str());
 	}
+
+	if( CSLFindName(szrImageMetadata.List(), "AUX_SATELLITE_NAME") != -1)
+	{
+		CPLString osSatName = CSLFetchNameValue(szrImageMetadata.List(), "AUX_SATELLITE_NAME");
+		CPLString pszMD;
+		pszMD.Printf("%s=%s",MDName_SatelliteId.c_str(), osSatName.c_str());
+		szrCommonImageMetadata.AddString(pszMD.c_str());
+	}
 }
 
 void Kompsat::ReadRPC(RSMDRPC& rRPC) const

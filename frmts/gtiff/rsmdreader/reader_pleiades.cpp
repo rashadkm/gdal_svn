@@ -70,6 +70,18 @@ void Pleiades::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLString
 		CPLString pszMD = MDName_SatelliteId + "=" + SatelliteIdValue;
 		szrCommonImageMetadata.AddString(pszMD.c_str());
 	}
+
+	if( CSLFindName(szrImageMetadata.List(), "Source_Identification.Strip_Source.IMAGING_DATE") != -1 &&
+			CSLFindName(szrImageMetadata.List(), "Source_Identification.Strip_Source.IMAGING_TIME") != -1)
+	{
+		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.IMAGING_TIME");
+		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.IMAGING_DATE");
+		
+		CPLString pszMD = MDName_AcquisitionDateTime + "=" + osAcqisitionDate + " " + osAcqisitionTime;
+		szrCommonImageMetadata.AddString(pszMD.c_str());
+	}
+
+
 }
 
 void Pleiades::ReadRPC(RSMDRPC& rRPC) const
