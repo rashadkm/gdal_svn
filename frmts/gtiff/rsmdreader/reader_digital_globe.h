@@ -34,6 +34,7 @@ private:
 	void ReadRPCFromWKT(RSMDRPC& rRPC) const;
 	void ReadRPCFromXML(RSMDRPC& rRPC) const;
 
+	bool IsXMLValid(const CPLString& psFilename) const;
 };
 
 #endif /* _READER_DIGITAL_GLOBE_H_INCLUDED */

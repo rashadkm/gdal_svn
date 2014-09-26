@@ -4,6 +4,7 @@
 #include "reader_pleiades.h"
 #include "reader_geo_eye.h"
 #include "reader_kompsat.h"
+#include "reader_rdk1.h"
 
 RSMDReader* GetRSMDReader(const char* pszFilename, RSDProvider rsdProvider)
 {
@@ -23,6 +24,8 @@ RSMDReader* GetRSMDReader(const CPLString pszFilename)
 		return new GeoEye(pszFilename.c_str());
 	if(Kompsat(pszFilename.c_str()).IsFullCompliense())
 		return new Kompsat(pszFilename.c_str());
+	if(RDK1(pszFilename.c_str()).IsFullCompliense())
+		return new RDK1(pszFilename.c_str());
 
 	return NULL;
 };

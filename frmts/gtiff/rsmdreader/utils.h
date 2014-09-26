@@ -7,7 +7,7 @@
 
 const char* GetCPLXMLNodeTextValue(const CPLXMLNode* psNode);
 
-void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues);
+void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues, CPLString& osRootNodeName);
 
 void ReadXML(CPLXMLNode* psNode, CPLStringList& szlValues);
 

@@ -63,20 +63,34 @@ public:
 
 		RSMDRPC szRPC;
 		ReadRPC(szRPC);
-		szMetadata.AddString(CPLString().Printf("%s.LINE_OFF=%s",MDPrefix_RPC.c_str(), szRPC.lineOffset.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("%s.SAMP_OFF=%s",MDPrefix_RPC.c_str(), szRPC.sampOffset.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("%s.LAT_OFF=%s",MDPrefix_RPC.c_str(), szRPC.latOffset.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("%s.LONG_OFF=%s",MDPrefix_RPC.c_str(), szRPC.longOffset.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("%s.HEIGHT_OFF=%s",MDPrefix_RPC.c_str(), szRPC.heightOffset.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("%s.LINE_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.lineScale.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("%s.SAMP_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.sampScale.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("%s.LAT_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.latScale.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("%s.LONG_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.longScale.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("%s.HEIGHT_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.heightScale.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("%s.LINE_NUM_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.lineNumCoef.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("%s.LINE_DEN_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.lineDenCoef.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("%s.SAMP_NUM_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.sampNumCoef.c_str()).c_str());
-		szMetadata.AddString(CPLString().Printf("%s.SAMP_DEN_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.sampDenCoef.c_str()).c_str());
+		if( !szRPC.lineOffset.empty() )
+			szMetadata.AddString(CPLString().Printf("%s.LINE_OFF=%s",MDPrefix_RPC.c_str(), szRPC.lineOffset.c_str()).c_str());
+		if( !szRPC.sampOffset.empty() )
+			szMetadata.AddString(CPLString().Printf("%s.SAMP_OFF=%s",MDPrefix_RPC.c_str(), szRPC.sampOffset.c_str()).c_str());
+		if( !szRPC.latOffset.empty() )
+			szMetadata.AddString(CPLString().Printf("%s.LAT_OFF=%s",MDPrefix_RPC.c_str(), szRPC.latOffset.c_str()).c_str());
+		if( !szRPC.longOffset.empty() )
+			szMetadata.AddString(CPLString().Printf("%s.LONG_OFF=%s",MDPrefix_RPC.c_str(), szRPC.longOffset.c_str()).c_str());
+		if( !szRPC.heightOffset.empty() )
+			szMetadata.AddString(CPLString().Printf("%s.HEIGHT_OFF=%s",MDPrefix_RPC.c_str(), szRPC.heightOffset.c_str()).c_str());
+		if( !szRPC.lineScale.empty() )
+			szMetadata.AddString(CPLString().Printf("%s.LINE_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.lineScale.c_str()).c_str());
+		if( !szRPC.sampScale.empty() )
+			szMetadata.AddString(CPLString().Printf("%s.SAMP_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.sampScale.c_str()).c_str());
+		if( !szRPC.latScale.empty() )
+			szMetadata.AddString(CPLString().Printf("%s.LAT_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.latScale.c_str()).c_str());
+		if( !szRPC.longScale.empty() )
+			szMetadata.AddString(CPLString().Printf("%s.LONG_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.longScale.c_str()).c_str());
+		if( !szRPC.heightScale.empty() )
+			szMetadata.AddString(CPLString().Printf("%s.HEIGHT_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.heightScale.c_str()).c_str());
+		if( !szRPC.lineNumCoef.empty() )
+			szMetadata.AddString(CPLString().Printf("%s.LINE_NUM_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.lineNumCoef.c_str()).c_str());
+		if( !szRPC.lineDenCoef.empty() )
+			szMetadata.AddString(CPLString().Printf("%s.LINE_DEN_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.lineDenCoef.c_str()).c_str());
+		if( !szRPC.sampNumCoef.empty() )
+			szMetadata.AddString(CPLString().Printf("%s.SAMP_NUM_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.sampNumCoef.c_str()).c_str());
+		if( !szRPC.sampDenCoef.empty() )
+			szMetadata.AddString(CPLString().Printf("%s.SAMP_DEN_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.sampDenCoef.c_str()).c_str());
 		return szMetadata;
 	};
 

@@ -38,6 +38,7 @@ set(LIB_HHEADERS
     reader_pleiades.h
     reader_geo_eye.h
     reader_kompsat.h
+    reader_rdk1.h
 )
 
 set(LIB_CSOURCES
@@ -48,6 +49,7 @@ set(LIB_CSOURCES
     reader_pleiades.cpp
     reader_geo_eye.cpp
     reader_kompsat.cpp
+    reader_rdk1.cpp
 )
 
 set(GDAL_TARGET_OBJECTS ${GDAL_TARGET_OBJECTS} $<TARGET_OBJECTS:${LIB_NAME}> PARENT_SCOPE)

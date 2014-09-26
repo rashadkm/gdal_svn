@@ -74,10 +74,14 @@ DigitalGlobe::DigitalGlobe(const char* pszFilename)
 {
 	osIMDSourceFilename = GDALFindAssociatedFile( pszFilename, "IMD", NULL, 0 );
 	osRPBSourceFilename = GDALFindAssociatedFile( pszFilename, "RPB", NULL, 0 );
-	if (osIMDSourceFilename == "" || osRPBSourceFilename == "")
-		osXMLSourceFilename = GDALFindAssociatedFile( pszFilename, "XML", NULL, 0 );
-	else
-		osXMLSourceFilename = "";
+	osXMLSourceFilename = "";
+
+	if (osIMDSourceFilename == "" || osRPBSourceFilename == "" )
+	{
+		CPLString osFilename = GDALFindAssociatedFile( pszFilename, "XML", NULL, 0 );
+		if( IsXMLValid(osFilename) )
+			osXMLSourceFilename = osFilename;
+	}	
 		
 	//osXMLSourceFilename = GDALFindAssociatedFile( pszFilename, "XML", NULL, 0 );
 };
@@ -126,12 +130,16 @@ void DigitalGlobe::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) con
 	{
 		CPLXMLNode* psNode = CPLParseXMLFile(osXMLSourceFilename.c_str());
 		if(psNode == NULL)
+		{
 			return;
+		}
 
 		CPLXMLNode* psisdNode = psNode->psNext;
 		if(psisdNode == NULL)
-			printf("isd not found\n");
-
+		{
+			return;
+		}
+			
 		ReadXML(CPLSearchXMLNode(psisdNode, "IMD"), szrImageMetadata);
 	}
 }
@@ -354,4 +362,30 @@ const CPLStringList DigitalGlobe::DefineSourceFiles() const
 		papszFileList.AddString(osXMLSourceFilename.c_str());
 
 	return papszFileList;
+}
+
+bool DigitalGlobe::IsXMLValid(const CPLString& psFilename) const
+{
+	if(psFilename != "")
+	{
+		CPLXMLNode* psNode = CPLParseXMLFile(psFilename.c_str());
+		if(psNode == NULL)
+		{
+			printf("psNode == NULL\n");
+			return false;
+		}
+
+		CPLXMLNode* psisdNode = psNode->psNext;
+		if(psisdNode == NULL)
+		{
+			printf("psisdNode == NULL\n");
+			return false;
+		}
+			
+		CPLXMLNode* psSatIdNode = CPLSearchXMLNode(psisdNode, "SATID");
+		if(psSatIdNode != NULL)
+			return true;
+	}
+
+	return false;
 }
