@@ -30,7 +30,6 @@ const bool Pleiades::IsFullCompliense() const
 {
 	if (!osXMLIMDSourceFilename.empty() && !osXMLRPCSourceFilename.empty())
 	{
-		printf("	>>> return true\n");
 		return true;
 	}
 
