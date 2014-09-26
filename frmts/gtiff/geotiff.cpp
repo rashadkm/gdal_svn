@@ -56,6 +56,8 @@
 #include "gt_jpeg_copy.h"
 #include <set>
 
+#include "rsmd_reader.h"
+
 #ifdef INTERNAL_LIBTIFF
 #include "tiffiop.h"
 #endif
@@ -246,6 +248,8 @@ class GTiffDataset : public GDALPamDataset
     VSILFILE *fpL;
     GTiffDataset **ppoActiveDSRef;
     GTiffDataset *poActiveDS; /* only used in actual base */
+
+	RSMDReader *pRSMDReader;
 
     int         bScanDeferred;
     void        ScanDirectories();
@@ -6839,7 +6843,7 @@ GDALDataset *GTiffDataset::Open( GDALOpenInfo * poOpenInfo )
 /* -------------------------------------------------------------------- */
     if (!Identify(poOpenInfo))
         return NULL;
-
+	
     if( EQUALN(pszFilename,"GTIFF_RAW:", strlen("GTIFF_RAW:")) )
     {
         bAllowRGBAInterface = FALSE;
@@ -7027,7 +7031,13 @@ GDALDataset *GTiffDataset::Open( GDALOpenInfo * poOpenInfo )
 /*      Check for external overviews.                                   */
 /* -------------------------------------------------------------------- */
     poDS->oOvManager.Initialize( poDS, pszFilename, poOpenInfo->GetSiblingFiles() );
-    
+
+	poDS->pRSMDReader = GetRSMDReader(poDS->osFilename);
+
+	/* TODO 
+		handle the exception poDS->pRSMDReader = NULL
+	*/
+
     return poDS;
 }
 
@@ -10792,7 +10802,7 @@ char **GTiffDataset::GetMetadataDomainList()
 {
     return BuildMetadataDomainList(CSLDuplicate(oGTiffMDMD.GetDomainList()),
                                    TRUE,
-                                   "", "ProxyOverviewRequest", "RPC", "IMD", "SUBDATASETS", "EXIF",
+                                   "", "ProxyOverviewRequest", "RPC", "IMD", "SUBDATASETS", "EXIF", "IMAGERY",
                                    "xml:XMP", "COLOR_PROFILE", NULL);
 }
 
@@ -10803,15 +10813,63 @@ char **GTiffDataset::GetMetadataDomainList()
 char **GTiffDataset::GetMetadata( const char * pszDomain )
 
 {
+	if (pRSMDReader != NULL)
+	{
+		CPLStringList metadata = pRSMDReader->GetMetadata();
+		
+		CPLStringList osIMDMD;
+		CPLStringList osImageryMD;
+		CPLStringList osRPCMD;
+
+		for( int i = 0; i < metadata.size(); i++ )
+		{
+			//printf( "\t\t >>> metadata: %s\n", metadata[i] );
+			size_t found = CPLString(metadata[i]).rfind("IMD");
+			if (found == 0)
+			{
+				osIMDMD.AddString(metadata[i]);
+				continue;
+			}
+			found = CPLString(metadata[i]).rfind("IMAGERY");
+			if (found == 0)
+			{
+				osImageryMD.AddString(metadata[i]);
+				continue;
+			}
+			found = CPLString(metadata[i]).rfind("RPC");
+			if (found == 0)
+			{
+				osRPCMD.AddString(metadata[i]);
+				continue;
+			}
+		}
+		if(osIMDMD.size() > 0)
+		{
+			osIMDMD.AddNameValue("md_type", "imd");
+			oGTiffMDMD.SetMetadata( osIMDMD.List(), "IMD" );
+		}
+
+		if(osImageryMD.size() > 0)
+		{
+			oGTiffMDMD.SetMetadata( osImageryMD.List(), "IMAGERY" );
+		}
+
+		if(osRPCMD.size() > 0)
+		{
+			oGTiffMDMD.SetMetadata( osRPCMD.List(), "RPC" );
+		}
+	}
+
     if( pszDomain != NULL && EQUAL(pszDomain,"ProxyOverviewRequest") )
         return GDALPamDataset::GetMetadata( pszDomain );
 
+	/*
     else if( pszDomain != NULL && EQUAL(pszDomain,"RPC") )
         LoadRPCRPB();
 
     else if( pszDomain != NULL && EQUAL(pszDomain,"IMD") )
         LoadIMDPVL();
-    
+	*/
     else if( pszDomain != NULL && EQUAL(pszDomain,"SUBDATASETS") )
         ScanDirectories();
 
@@ -11164,7 +11222,17 @@ char **GTiffDataset::GetFileList()
 
 {
     char **papszFileList = GDALPamDataset::GetFileList();
-
+	
+	if(pRSMDReader != NULL)
+	{
+		CPLStringList sourseMDFileList = pRSMDReader->GetSourceFileList();
+		for( int i = 0; i < sourseMDFileList.size(); i++ )
+		{
+			//printf( "\t\t >>> source file: %s\n", sourseMDFileList[i] );
+			papszFileList = CSLAddString( papszFileList, sourseMDFileList[i]);
+		}
+	}
+	/*
     LoadRPCRPB();
     LoadIMDPVL();
 
@@ -11176,7 +11244,7 @@ char **GTiffDataset::GetFileList()
         papszFileList = CSLAddString( papszFileList, osRPBFile );
     if (osRPCFile.size() != 0)
         papszFileList = CSLAddString( papszFileList, osRPCFile );
-
+	*/
     if (osGeorefFilename.size() != 0 &&
         CSLFindString(papszFileList, osGeorefFilename) == -1)
     {
