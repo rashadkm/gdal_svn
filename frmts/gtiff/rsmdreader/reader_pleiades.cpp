@@ -1,3 +1,32 @@
+/******************************************************************************
+ * $Id$
+ *
+ * Project:  RSMDReader - Remote Sensing MetaData Reader
+ * Purpose:  Read remote sensing metadata from files from different providers like as DigitalGlobe, GeoEye et al.
+ * Author:   Alexander Lisovenko
+ *
+ ******************************************************************************
+ * Copyright (c) 2014 NextGIS <info@nextgis.ru>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ ****************************************************************************/
+
 #include "cplkeywordparser.h"
 
 #include "reader_pleiades.h"
@@ -52,9 +81,9 @@ void Pleiades::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
 
 		CPLXMLNode* psDimapNode = psNode->psNext->psNext;
 		if(psDimapNode == NULL)
-			printf("Dimap_Document node not found\n");
+			return;
 
-		ReadXML(CPLSearchXMLNode(psDimapNode,"Dataset_Sources"), szrImageMetadata);
+		ReadXMLToStringList(CPLSearchXMLNode(psDimapNode,"Dataset_Sources"), szrImageMetadata);
 	}
 	
 }
@@ -66,8 +95,7 @@ void Pleiades::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLString
 	{
 		//CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.INSTRUMENT_INDEX");
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.INSTRUMENT_INDEX");
-		CPLString pszMD = MDName_SatelliteId + "=" + SatelliteIdValue;
-		szrCommonImageMetadata.AddString(pszMD.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "Source_Identification.Strip_Source.IMAGING_DATE") != -1 &&
@@ -75,9 +103,8 @@ void Pleiades::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLString
 	{
 		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.IMAGING_TIME");
 		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.IMAGING_DATE");
-		
-		CPLString pszMD = MDName_AcquisitionDateTime + "=" + osAcqisitionDate + " " + osAcqisitionTime;
-		szrCommonImageMetadata.AddString(pszMD.c_str());
+		CPLString AcqisitionDateTime = osAcqisitionDate + " " + osAcqisitionTime;
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), AcqisitionDateTime.c_str());
 	}
 
 
@@ -99,10 +126,10 @@ void Pleiades::ReadRPCFromXML(RSMDRPC& rRPC) const
 
 		CPLXMLNode* psRootNode = psNode->psNext;
 		if(psRootNode == NULL)
-			printf("Dimap_Document node not found\n");
+			return;
 
 		CPLStringList szRPCdata;
-		ReadXML(CPLSearchXMLNode(psRootNode, "Global_RFM"), szrRPC);
+		ReadXMLToStringList(CPLSearchXMLNode(psRootNode, "Global_RFM"), szrRPC);
 	}
 
 	const char* szpLineOffset = szrRPC.FetchNameValue("RFM_Validity.LINE_OFF");

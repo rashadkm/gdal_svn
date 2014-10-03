@@ -1,73 +1,38 @@
+/******************************************************************************
+ * $Id$
+ *
+ * Project:  RSMDReader - Remote Sensing MetaData Reader
+ * Purpose:  Read remote sensing metadata from files from different providers like as DigitalGlobe, GeoEye et al.
+ * Author:   Alexander Lisovenko
+ *
+ ******************************************************************************
+ * Copyright (c) 2014 NextGIS <info@nextgis.ru>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ ****************************************************************************/
+
 #include "cplkeywordparser.h"
 
 #include "reader_digital_globe.h"
 
 #include "remote_sensing_metadata.h"
 #include "utils.h"
-
-namespace
-{
-	bool GetAcqisitionTime(const CPLString& rsAcqisitionStartTime, const CPLString& rsAcqisitionEndTime, CPLString& osAcqisitionTime)
-	{
-		size_t iYearStart;
-		size_t iYearEnd;
-
-		size_t iMonthStart;
-		size_t iMonthEnd;
-
-		size_t iDayStart;
-		size_t iDayEnd;
-		
-		size_t iHoursStart;
-		size_t iHoursEnd;
-
-		size_t iMinStart;
-		size_t iMinEnd;
-
-		size_t iSecStart;
-		size_t iSecEnd;
-
-		int r1 = sscanf ( rsAcqisitionStartTime.c_str(), "%d-%d-%dT%d:%d:%d.%*dZ", &iYearStart, &iMonthStart, &iDayStart, &iHoursStart, &iMinStart, &iSecStart);
-		int r2 = sscanf ( rsAcqisitionEndTime.c_str(), "%d-%d-%dT%d:%d:%d.%*dZ", &iYearEnd, &iMonthEnd, &iDayEnd, &iHoursEnd, &iMinEnd, &iSecEnd);
-		
-		if (r1 != 6 || r2 != 6)
-			return false;
-
-		tm timeptrStart;
-		timeptrStart.tm_sec = iSecStart;
-		timeptrStart.tm_min = iMinStart;
-		timeptrStart.tm_hour = iHoursStart;
-		timeptrStart.tm_mday = iDayStart;
-		timeptrStart.tm_mon = iMonthStart-1;
-		timeptrStart.tm_year = iYearStart-1900;
-
-		time_t timeStart = mktime(&timeptrStart);
-
-		tm timeptrEnd;
-		timeptrEnd.tm_sec = iSecEnd;
-		timeptrEnd.tm_min = iMinEnd;
-		timeptrEnd.tm_hour = iHoursEnd;
-		timeptrEnd.tm_mday = iDayEnd;
-		timeptrEnd.tm_mon = iMonthEnd-1;
-		timeptrEnd.tm_year = iYearEnd-1900;
-		
-		time_t timeEnd = mktime(&timeptrEnd);
-
-		time_t timeAverage = timeStart + (timeEnd - timeStart)/2;
-
-		tm * acqisitionTime = localtime(&timeAverage);
-		
-		osAcqisitionTime.Printf("%d %d %d %d %d %d", 
-			1900 + acqisitionTime->tm_year,
-			1 + acqisitionTime->tm_mon,
-			acqisitionTime->tm_mday,
-			acqisitionTime->tm_hour,
-			acqisitionTime->tm_min,
-			acqisitionTime->tm_sec);
-
-		return true;
-	}
-}
 
 DigitalGlobe::DigitalGlobe(const char* pszFilename)
 	:RSMDReader(pszFilename, "DigitalGlobe")
@@ -76,7 +41,7 @@ DigitalGlobe::DigitalGlobe(const char* pszFilename)
 	osRPBSourceFilename = GDALFindAssociatedFile( pszFilename, "RPB", NULL, 0 );
 	osXMLSourceFilename = "";
 
-	if (osIMDSourceFilename == "" || osRPBSourceFilename == "" )
+	if (osIMDSourceFilename.empty() || osRPBSourceFilename.empty() )
 	{
 		CPLString osFilename = GDALFindAssociatedFile( pszFilename, "XML", NULL, 0 );
 		if( IsXMLValid(osFilename) )
@@ -140,7 +105,7 @@ void DigitalGlobe::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) con
 			return;
 		}
 			
-		ReadXML(CPLSearchXMLNode(psisdNode, "IMD"), szrImageMetadata);
+		ReadXMLToStringList(CPLSearchXMLNode(psisdNode, "IMD"), szrImageMetadata);
 	}
 }
 
@@ -149,26 +114,22 @@ void DigitalGlobe::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLSt
 	if( CSLFindName(szrImageMetadata.List(), "IMAGE.SATID") != -1)
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "IMAGE.SATID");
-		CPLString pszMD = MDName_SatelliteId + "=" + SatelliteIdValue;
-		szrCommonImageMetadata.AddString(pszMD.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
 	}
 	if( CSLFindName(szrImageMetadata.List(), "IMAGE_1.SATID") != -1)
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "IMAGE_1.SATID");
-		CPLString pszMD = MDName_SatelliteId + "=" + SatelliteIdValue;
-		szrCommonImageMetadata.AddString(pszMD.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
 	}
 	if( CSLFindName(szrImageMetadata.List(), "IMAGE_1.cloudCover") != -1)
 	{
 		CPLString osCloudCoverValue = CSLFetchNameValue(szrImageMetadata.List(), "IMAGE_1.cloudCover");
-		CPLString pszMD = MDName_CloudCover + "=" + osCloudCoverValue;
-		szrCommonImageMetadata.AddString(pszMD.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), osCloudCoverValue.c_str());
 	}
 	if( CSLFindName(szrImageMetadata.List(), "IMAGE.CLOUDCOVER") != -1)
 	{
 		CPLString osCloudCoverValue = CSLFetchNameValue(szrImageMetadata.List(), "IMAGE.CLOUDCOVER");
-		CPLString pszMD = MDName_CloudCover + "=" + osCloudCoverValue;
-		szrCommonImageMetadata.AddString(pszMD.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), osCloudCoverValue.c_str());
 	}
 	
 	if( CSLFindName(szrImageMetadata.List(), "MAP_PROJECTED_PRODUCT.earliestAcqTime") != -1 &&
@@ -176,20 +137,12 @@ void DigitalGlobe::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLSt
 	{
 		CPLString osTimeStart = CSLFetchNameValue(szrImageMetadata.List(), "MAP_PROJECTED_PRODUCT.earliestAcqTime");
 		CPLString osTimeEnd = CSLFetchNameValue(szrImageMetadata.List(), "MAP_PROJECTED_PRODUCT.latestAcqTime");
-
-
 		CPLString osAcqisitionTime;
-		CPLString pszMD;
-		if(GetAcqisitionTime(osTimeStart, osTimeEnd, osAcqisitionTime))
-		{
-			pszMD.Printf("%s=%s",MDName_AcquisitionDateTime.c_str(), osAcqisitionTime.c_str());
-			
-		}
+		
+		if(GetAcqisitionTime(osTimeStart, osTimeEnd, CPLString("%d-%d-%dT%d:%d:%d.%*dZ"), osAcqisitionTime))
+			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTime.c_str());
 		else
-		{
-			pszMD.Printf("%s=unknown", MDName_AcquisitionDateTime.c_str());
-		}
-		szrCommonImageMetadata.AddString(pszMD.c_str());
+			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), "unknown");
 	}
 }
 
@@ -286,10 +239,10 @@ void DigitalGlobe::ReadRPCFromXML(RSMDRPC& rRPC) const
 
 		CPLXMLNode* psisdNode = psNode->psNext;
 		if(psisdNode == NULL)
-			printf("isd not found\n");
+			return;
 
 		CPLStringList szRPCdata;
-		ReadXML(CPLSearchXMLNode(psisdNode, "RPB"), szrRPC);
+		ReadXMLToStringList(CPLSearchXMLNode(psisdNode, "RPB"), szrRPC);
 	}
 
 	const char* szpLineOffset = szrRPC.FetchNameValue("image.lineoffset");
@@ -371,14 +324,12 @@ bool DigitalGlobe::IsXMLValid(const CPLString& psFilename) const
 		CPLXMLNode* psNode = CPLParseXMLFile(psFilename.c_str());
 		if(psNode == NULL)
 		{
-			printf("psNode == NULL\n");
 			return false;
 		}
 
 		CPLXMLNode* psisdNode = psNode->psNext;
 		if(psisdNode == NULL)
 		{
-			printf("psisdNode == NULL\n");
 			return false;
 		}
 			

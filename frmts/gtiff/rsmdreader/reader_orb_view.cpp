@@ -1,5 +1,4 @@
 /******************************************************************************
-/******************************************************************************
  * $Id$
  *
  * Project:  RSMDReader - Remote Sensing MetaData Reader
@@ -28,11 +27,9 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
-#include <time.h>
-
 #include "cplkeywordparser.h"
 
-#include "reader_kompsat.h"
+#include "reader_orb_view.h"
 
 #include "remote_sensing_metadata.h"
 #include "utils.h"
@@ -62,131 +59,99 @@ namespace
         
 		return 0;
 	}
-
-
-	int ReadIMDFile( const char *pszFilename, CPLStringList& oslRPC)
-	{
-        char **papszLines = CSLLoad( pszFilename );
-        if(papszLines == NULL)
-            return -1;
-     
-		CPLString osGroupName = "";
-
-        for(int i = 0; papszLines[i] != NULL; i++ )
-        {
-            CPLString osLine(papszLines[i]);
-            
-            char *ppszKey = NULL;				
-
-			if(strstr(osLine.c_str(),"BEGIN_") != NULL && strstr(osLine.c_str(),"_BEGIN") == NULL)
-			{
-				int iFound = osLine.find("_BLOCK");
-				
-				char* ppszGroupName = (char *) CPLMalloc(iFound - 6);
-				strncpy(ppszGroupName, osLine.c_str() + 6, iFound - 6 );
-				osGroupName = ppszGroupName;
-				osLine.Clear();
-				continue;
-			}
-
-			if(strstr(osLine.c_str(),"END_") != NULL && strstr(osLine.c_str(),"_END") == NULL)
-			{
-				osGroupName = "";
-				osLine.Clear();
-				continue;
-			}
-			
-			if (osGroupName.empty())
-			{
-				const char* value = CPLParseNameTabValue(osLine.c_str(), &ppszKey);
-				oslRPC.AddNameValue(ppszKey, value);
-			}
-			else
-			{
-				/*
-					Not parse the parameters in groups
-				*/
-
-				/*
-				int i;
-				for( i = 0; osLine.c_str()[i] != '\0'; i++ )
-				{
-					if( osLine.c_str()[i] != '\t')
-						break;
-				}
-				const char* value = CPLParseIMDNameValue(osLine.c_str() + i, &ppszKey);
-				oslRPC.AddNameValue(CPLString().Printf("%s.%s",osGroupName.c_str(), ppszKey).c_str(), value);
-				*/
-			}
-			
-			CPLFree( ppszKey ); 
-        }
-        
-		return 0;
-	}
 }
 
-Kompsat::Kompsat(const char* pszFilename)
-	:RSMDReader(pszFilename, "Kompsat")
+OrbView::OrbView(const char* pszFilename)
+	:RSMDReader(pszFilename, "OrbView")
 {
-	osIMDSourceFilename = GDALFindAssociatedFile( pszFilename, "eph", NULL, 0 );
-	osRPCSourceFilename = GDALFindAssociatedFile( pszFilename, "rpc", NULL, 0 );
+	osIMDSourceFilename = GDALFindAssociatedFile( pszFilename, "pvl", NULL, 0 );
+	CPLString osDirName = CPLGetDirname(pszFilename);
+	CPLString osBaseName = CPLGetBasename(pszFilename);
+	osRPCSourceFilename = CPLString().Printf( "%s/%s_rpc.txt", osDirName.c_str(), osBaseName.c_str() );	
 };
 
-const bool Kompsat::IsFullCompliense() const
+const bool OrbView::IsFullCompliense() const
 {
 	if (osIMDSourceFilename != "" && osRPCSourceFilename != "")
 		return true;
-        
+
 	return false;
 }
 
-void Kompsat::ReadImageMetadata(CPLStringList& szrImageMetadata) const
+void OrbView::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 {
-	if (osIMDSourceFilename != "" && osRPCSourceFilename != "")
+	if (osIMDSourceFilename != "")
 	{
 		ReadImageMetadataFromWKT(szrImageMetadata);
 	}
 }
 
-void Kompsat::ReadImageMetadataFromWKT(CPLStringList& szrImageMetadata) const
+void OrbView::ReadImageMetadataFromWKT(CPLStringList& szrImageMetadata) const
 {
 	if (osIMDSourceFilename != "")
 	{
-		ReadIMDFile( osIMDSourceFilename.c_str(), szrImageMetadata);
+		CPLKeywordParser oParser;
+
+		VSILFILE *fp = VSIFOpenL( osIMDSourceFilename.c_str(), "r" );
+
+		if( fp == NULL )
+			return;
+
+		if( !oParser.Ingest( fp ) )
+		{
+			VSIFCloseL( fp );
+			return;
+		}
+
+		VSIFCloseL( fp );
+
+		/* -------------------------------------------------------------------- */
+		/*      Consider version changing.                                      */
+		/* -------------------------------------------------------------------- */
+		char **papszPVLMD = CSLDuplicate( oParser.GetAllKeywords() );
+
+		if( papszPVLMD != NULL )
+		{
+			papszPVLMD = CSLSetNameValue( papszPVLMD, 
+											"md_type", "pvl" );
+	        
+			for(int i = 0; papszPVLMD[i] != NULL; i++ )
+				szrImageMetadata.AddString(papszPVLMD[i]);
+
+			CSLDestroy( papszPVLMD );
+		}
 	}
 }
 
-void Kompsat::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const
+void OrbView::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const
 {
-	if( CSLFindName(szrImageMetadata.List(), "IMG_ACQISITION_START_TIME") != -1 &&
-			CSLFindName(szrImageMetadata.List(), "IMG_ACQISITION_END_TIME") != -1 )
+	if( CSLFindName(szrImageMetadata.List(), "sensorInfo.satelliteName") != -1 )
 	{
-		CPLString osTimeStart = CSLFetchNameValue(szrImageMetadata.List(), "IMG_ACQISITION_START_TIME");
-		CPLString osTimeEnd = CSLFetchNameValue(szrImageMetadata.List(), "IMG_ACQISITION_END_TIME");
-		CPLString osAcqisitionTime;
-
-		if(GetAcqisitionTime(osTimeStart, osTimeEnd, CPLString("%d %d %d %d %d %d"), osAcqisitionTime) )
-			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTime.c_str());
-		else
-			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), "unknown");
+		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "sensorInfo.satelliteName");
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue);
 	}
 
-	if( CSLFindName(szrImageMetadata.List(), "AUX_SATELLITE_NAME") != -1)
+	if( CSLFindName(szrImageMetadata.List(), "productInfo.productCloudCoverPercentage") != -1 )
 	{
-		CPLString osSatName = CSLFetchNameValue(szrImageMetadata.List(), "AUX_SATELLITE_NAME");
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), osSatName.c_str());
+		CPLString osCloudCoverValue = CSLFetchNameValue(szrImageMetadata.List(), "productInfo.productCloudCoverPercentage");
+		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), osCloudCoverValue);
+	}
+	
+	if( CSLFindName(szrImageMetadata.List(), "inputImageInfo.firstLineAcquisitionDateTime") != -1 )
+	{
+		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "inputImageInfo.firstLineAcquisitionDateTime");
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTime);
 	}
 }
 
-void Kompsat::ReadRPC(RSMDRPC& rRPC) const
+void OrbView::ReadRPC(RSMDRPC& rRPC) const
 {
 	if (osRPCSourceFilename != "")
 	{
 		ReadRPCFromWKT(rRPC);
 	}
 }
-void Kompsat::ReadRPCFromWKT(RSMDRPC& rRPC) const
+void OrbView::ReadRPCFromWKT(RSMDRPC& rRPC) const
 {
 	CPLStringList szrRPC;
 	if (osRPCSourceFilename != "")
@@ -285,7 +250,7 @@ void Kompsat::ReadRPCFromWKT(RSMDRPC& rRPC) const
 	rRPC.sampDenCoef = sampDenCoef.c_str();
 }
 
-const CPLStringList Kompsat::DefineSourceFiles() const
+const CPLStringList OrbView::DefineSourceFiles() const
 {
 	CPLStringList papszFileList;
 
