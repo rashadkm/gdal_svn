@@ -27,46 +27,35 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
+#ifndef _READER_EROS_H_INCLUDED
+#define _READER_EROS_H_INCLUDED
+
+#include "cpl_string.h"
+#include "gdal_priv.h"
+
 #include "rsmd_reader.h"
 
-#include "reader_digital_globe.h"
-#include "reader_orb_view.h"
-#include "reader_pleiades.h"
-#include "reader_geo_eye.h"
-#include "reader_kompsat.h"
-#include "reader_rdk1.h"
-#include "reader_spot.h"
-#include "reader_alos.h"
-#include "reader_eros.h"
-
-RSMDReader* GetRSMDReader(const char* pszFilename, RSMDProvider rsdProvider)
+/**
+@brief Metadata reader for EROS
+*/
+class EROS: public RSMDReader
 {
-	if(rsdProvider == RSMD_DigitalGlobe)
-		return new DigitalGlobe(pszFilename);
+public:
+	EROS(const char* pszFilename);
+    
+	const bool IsFullCompliense() const;
 
-	return NULL;
+private:
+	CPLString osIMDSourceFilename;
+
+private:
+	const CPLStringList DefineSourceFiles() const;
+
+	void ReadImageMetadata(CPLStringList& szrImageMetadata) const;
+
+	void GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const;
+
+	void ReadRPC(RSMDRPC& rRPC) const;
 };
 
-RSMDReader* GetRSMDReader(const CPLString pszFilename)
-{
-	if(DigitalGlobe(pszFilename.c_str()).IsFullCompliense())
-		return new DigitalGlobe(pszFilename.c_str());
-    if(OrbView(pszFilename.c_str()).IsFullCompliense())
-		return new OrbView(pszFilename.c_str());
-	if(Pleiades(pszFilename.c_str()).IsFullCompliense())
-		return new Pleiades(pszFilename.c_str());
-	if(GeoEye(pszFilename.c_str()).IsFullCompliense())
-		return new GeoEye(pszFilename.c_str());
-	if(Kompsat(pszFilename.c_str()).IsFullCompliense())
-		return new Kompsat(pszFilename.c_str());
-	if(RDK1(pszFilename.c_str()).IsFullCompliense())
-		return new RDK1(pszFilename.c_str());
-	if(Spot(pszFilename.c_str()).IsFullCompliense())
-		return new Spot(pszFilename.c_str());
-	if(ALOS(pszFilename.c_str()).IsFullCompliense())
-		return new ALOS(pszFilename.c_str());
-	if(EROS(pszFilename.c_str()).IsFullCompliense())
-		return new EROS(pszFilename.c_str());
-	
-	return NULL;
-};
+#endif /* _READER_EROS_H_INCLUDED */

@@ -42,6 +42,7 @@ set(LIB_HHEADERS
     reader_rdk1.h
     reader_spot.h
     reader_alos.h
+    reader_eros.h
 )
 
 set(LIB_CSOURCES
@@ -55,6 +56,7 @@ set(LIB_CSOURCES
     reader_rdk1.cpp
     reader_spot.cpp
     reader_alos.cpp
+    reader_eros.cpp
 )
 
 set(GDAL_TARGET_OBJECTS ${GDAL_TARGET_OBJECTS} $<TARGET_OBJECTS:${LIB_NAME}> PARENT_SCOPE)

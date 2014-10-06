@@ -27,14 +27,11 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
-#include <time.h>
-#include <string>
 #include <fstream>
 
 #include "cplkeywordparser.h"
 
 #include "reader_alos.h"
-
 #include "remote_sensing_metadata.h"
 #include "utils.h"
 

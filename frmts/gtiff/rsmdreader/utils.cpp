@@ -27,6 +27,8 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
+#include <time.h>
+
 #include "utils.h"
 
 const char* GetCPLXMLNodeTextValue(const CPLXMLNode* psNode)
@@ -93,6 +95,38 @@ const char *CPLParseNameTabValue(const char *pszNameValue, char **ppszKey )
     for( i = 0; pszNameValue[i] != '\0'; i++ )
     {
         if( pszNameValue[i] == '\t')
+        {
+            pszValue = pszNameValue + i + 1;
+            while( *pszValue == ' ' || *pszValue == '\t' )
+                pszValue++;
+
+            if( ppszKey != NULL )
+            {
+                *ppszKey = (char *) CPLMalloc(i+1);
+                strncpy( *ppszKey, pszNameValue, i );
+                (*ppszKey)[i] = '\0';
+                while( i > 0 && (*ppszKey)[i] == ' ')
+                {
+                    (*ppszKey)[i] = '\0';
+                    i--;
+                }
+            }
+
+            return pszValue;
+        }
+    }
+
+    return NULL;
+}
+
+const char *CPLParseNameSpaceValue(const char *pszNameValue, char **ppszKey )
+{
+    int  i;
+    const char *pszValue;
+
+    for( i = 0; pszNameValue[i] != '\0'; i++ )
+    {
+        if( pszNameValue[i] == ' ')
         {
             pszValue = pszNameValue + i + 1;
             while( *pszValue == ' ' || *pszValue == '\t' )
