@@ -38,8 +38,7 @@ Spot::Spot(const char* pszFilename)
 	:RSMDReader(pszFilename, "Spot")
 {
 	CPLString osDirName = CPLGetDirname(pszFilename);
-
-	osIMDSourceFilename = CPLString().Printf("%s/METADATA.DIM",osDirName.c_str());
+	osIMDSourceFilename = CPLFormFilename( osDirName.c_str(), "METADATA.DIM", NULL );
 
 	VSIStatBufL sStatBuf;
 	if( VSIStatExL( osIMDSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )

@@ -46,9 +46,7 @@ DigitalGlobe::DigitalGlobe(const char* pszFilename)
 		CPLString osFilename = GDALFindAssociatedFile( pszFilename, "XML", NULL, 0 );
 		if( IsXMLValid(osFilename) )
 			osXMLSourceFilename = osFilename;
-	}	
-		
-	//osXMLSourceFilename = GDALFindAssociatedFile( pszFilename, "XML", NULL, 0 );
+	}
 };
 
 const bool DigitalGlobe::IsFullCompliense() const

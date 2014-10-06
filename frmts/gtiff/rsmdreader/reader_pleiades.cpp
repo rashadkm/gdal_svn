@@ -41,8 +41,8 @@ Pleiades::Pleiades(const char* pszFilename)
 	CPLString osBaseName = CPLGetBasename(pszFilename);
 	osBaseName.replace(0,4,"");
 
-	osXMLIMDSourceFilename = CPLString().Printf("%s/DIM_%s.XML",osDirName.c_str(), osBaseName.c_str());
-	osXMLRPCSourceFilename = CPLString().Printf("%s/RPC_%s.XML",osDirName.c_str(), osBaseName.c_str());
+	osXMLIMDSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("DIM_%s", osBaseName.c_str()), ".XML" );
+	osXMLIMDSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("RPC_%s", osBaseName.c_str()), ".XML" );
 
 	VSIStatBufL sStatBuf;
 	if( VSIStatExL( osXMLIMDSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )

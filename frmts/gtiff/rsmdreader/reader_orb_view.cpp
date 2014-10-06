@@ -65,9 +65,16 @@ OrbView::OrbView(const char* pszFilename)
 	:RSMDReader(pszFilename, "OrbView")
 {
 	osIMDSourceFilename = GDALFindAssociatedFile( pszFilename, "pvl", NULL, 0 );
+	
 	CPLString osDirName = CPLGetDirname(pszFilename);
 	CPLString osBaseName = CPLGetBasename(pszFilename);
-	osRPCSourceFilename = CPLString().Printf( "%s/%s_rpc.txt", osDirName.c_str(), osBaseName.c_str() );	
+	osRPCSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("%s_rpc", osBaseName.c_str()), ".txt" );
+
+	VSIStatBufL sStatBuf;
+	if( VSIStatExL( osRPCSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
+    {
+		osRPCSourceFilename = "";
+	}
 };
 
 const bool OrbView::IsFullCompliense() const

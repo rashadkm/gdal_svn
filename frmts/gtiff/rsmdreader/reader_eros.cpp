@@ -42,7 +42,7 @@ EROS::EROS(const char* pszFilename)
 	// without IMG_ prefix
 	CPLString osBaseName( osFileName.substr(0, osFileName.find(".")) );
 	
-	osIMDSourceFilename = osDirName + "/" + osBaseName + ".pass";
+	osIMDSourceFilename = CPLFormFilename( osDirName.c_str(), osBaseName.c_str(), ".pass" );
 
 	VSIStatBufL sStatBuf;
 	if( VSIStatExL( osIMDSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )

@@ -40,7 +40,8 @@ GeoEye::GeoEye(const char* pszFilename)
 {
 	CPLString osDirName = CPLGetDirname(pszFilename);
 	CPLString osBaseName = CPLGetBasename(pszFilename);
-	osWKTRPCSourceFilename = CPLString().Printf("%s/%s_rpc.txt",osDirName.c_str(), osBaseName.c_str());
+	
+	osWKTRPCSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("%s_rpc", osBaseName.c_str()), ".txt" );
 
 	VSIStatBufL sStatBuf;
 	if( VSIStatExL( osWKTRPCSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
@@ -50,8 +51,7 @@ GeoEye::GeoEye(const char* pszFilename)
 
 
 	osIMDSourceFilename = "";
-	VSIFilesystemHandler *poFSHandler =
-        VSIFileManager::GetHandler( pszFilename );
+	VSIFilesystemHandler *poFSHandler = VSIFileManager::GetHandler( pszFilename );
 	char **papszFiles = NULL;
 	papszFiles = poFSHandler->ReadDir("./");
 	for( int i = 0; papszFiles[i] != NULL; i++ )
@@ -60,7 +60,7 @@ GeoEye::GeoEye(const char* pszFilename)
 		int iFound = osFileName.find("_metadata");
 		if( iFound != -1)
 		{
-			osIMDSourceFilename = CPLString().Printf("%s/%s",osDirName.c_str(), osFileName.c_str());;
+			osIMDSourceFilename = CPLFormFilename( osDirName.c_str(), osFileName.c_str(), NULL );
 			break;
 		}
     }

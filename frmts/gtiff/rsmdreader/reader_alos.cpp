@@ -41,11 +41,11 @@ ALOS::ALOS(const char* pszFilename)
 	CPLString osDirName(CPLGetDirname(pszFilename));
 	CPLString osFileName(CPLGetBasename(pszFilename));
 	
-	// without IMG_ prefix
+	// Without IMG_ prefix
 	CPLString osSceneProductInfo(osFileName.substr(4, osFileName.size() - 4));
 	
-	osIMDSourceFilename = osDirName + "/" + "summary.txt";
-	osRPCSourceFilename.Printf("%s/RPC-%s.txt",osDirName.c_str(), osSceneProductInfo.c_str());
+	osIMDSourceFilename = CPLFormFilename( osDirName.c_str(), "summary", ".txt" );
+	osRPCSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("RPC-%s", osSceneProductInfo.c_str()), ".txt" );
 
 	VSIStatBufL sStatBuf;
 	if( VSIStatExL( osIMDSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
@@ -62,7 +62,7 @@ ALOS::ALOS(const char* pszFilename)
 
 const bool ALOS::IsFullCompliense() const
 {
-	if (!osIMDSourceFilename.empty() && !osRPCSourceFilename.empty())
+	if (!osIMDSourceFilename.empty())
 		return true;
         
 	return false;
@@ -175,11 +175,11 @@ const CPLStringList ALOS::DefineSourceFiles() const
 {
 	CPLStringList papszFileList;
 
-	if(!osIMDSourceFilename.empty() && !osRPCSourceFilename.empty())
-	{
+	if(!osIMDSourceFilename.empty())
 		papszFileList.AddString(osIMDSourceFilename.c_str());
+	if(!osRPCSourceFilename.empty())
 		papszFileList.AddString(osRPCSourceFilename.c_str());
-	}
+
 
 	return papszFileList;
 }

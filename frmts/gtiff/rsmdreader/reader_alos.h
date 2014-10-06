@@ -36,7 +36,11 @@
 #include "rsmd_reader.h"
 
 /**
-@brief Metadata reader for ALOS
+Metadata reader for ALOS
+
+TIFF filename:		IMG-sssssssssssssss-pppppppp.tif
+Metadata filename:	summary.txt
+RPC filename:		RPC-sssssssssssssss-pppppppp.txt
 */
 class ALOS: public RSMDReader
 {
