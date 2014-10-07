@@ -37,6 +37,15 @@
 
 /**
 @brief Metadata reader for Pleiades
+
+TIFF filename:		IMG_xxxxxx.tif
+Metadata filename:	DIM_xxxxxx.XML
+RPC filename:		RPC_xxxxxx.XML
+
+Common metadata (from metadata filename):
+	MDName_SatelliteId:			MISSION, MISSION_INDEX			
+	MDName_AcquisitionDateTime:	IMAGING_DATE, IMAGING_TIME
+
 */
 class Pleiades: public RSMDReader
 {

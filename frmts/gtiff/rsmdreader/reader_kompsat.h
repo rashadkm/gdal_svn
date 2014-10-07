@@ -37,6 +37,14 @@
 
 /**
 @brief Metadata reader for Kompsat
+
+TIFF filename:		aaaaaaaaaa.tif
+Metadata filename:	aaaaaaaaaa.eph
+RPC filename:		aaaaaaaaaa.rpc
+
+Common metadata (from metadata filename):
+	MDName_SatelliteId:			AUX_SATELLITE_NAME
+	MDName_AcquisitionDateTime:	IMG_ACQISITION_START_TIME, IMG_ACQISITION_END_TIME
 */
 class Kompsat: public RSMDReader
 {

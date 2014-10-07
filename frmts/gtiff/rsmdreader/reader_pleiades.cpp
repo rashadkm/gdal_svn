@@ -42,7 +42,7 @@ Pleiades::Pleiades(const char* pszFilename)
 	osBaseName.replace(0,4,"");
 
 	osXMLIMDSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("DIM_%s", osBaseName.c_str()), ".XML" );
-	osXMLIMDSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("RPC_%s", osBaseName.c_str()), ".XML" );
+	osXMLRPCSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("RPC_%s", osBaseName.c_str()), ".XML" );
 
 	VSIStatBufL sStatBuf;
 	if( VSIStatExL( osXMLIMDSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
@@ -91,10 +91,13 @@ void Pleiades::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
 void Pleiades::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const
 {
 	//if( CSLFindName(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.INSTRUMENT_INDEX") != -1)
-	if( CSLFindName(szrImageMetadata.List(), "Source_Identification.Strip_Source.INSTRUMENT_INDEX") != -1)
+	if( CSLFindName(szrImageMetadata.List(), "Source_Identification.Strip_Source.MISSION") != -1 &&
+		CSLFindName(szrImageMetadata.List(), "Source_Identification.Strip_Source.MISSION_INDEX") != -1)
 	{
 		//CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.INSTRUMENT_INDEX");
-		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.INSTRUMENT_INDEX");
+		CPLString SatelliteIdValue = CPLSPrintf( "%s.%s",
+			CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.MISSION"),
+			CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.MISSION_INDEX") );
 		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
 	}
 
