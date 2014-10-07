@@ -91,7 +91,17 @@ void ALOS::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 
 void ALOS::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const
 {
-	
+	if( CSLFindName(szrImageMetadata.List(), "Lbi_Satellite") != -1)
+	{
+		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "Lbi_Satellite");
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
+	}
+
+	if( CSLFindName(szrImageMetadata.List(), "Img_CloudQuantityOfAllImage") != -1)
+	{
+		CPLString CloudCover = CSLFetchNameValue(szrImageMetadata.List(), "Img_CloudQuantityOfAllImage");
+		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), CloudCover.c_str());
+	}
 }
 
 void ALOS::ReadRPC(RSMDRPC& rRPC) const

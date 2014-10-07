@@ -63,7 +63,6 @@ void Spot::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 
 void Spot::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
 {
-	
 	if(osIMDSourceFilename != "")
 	{
 		CPLXMLNode* psNode = CPLParseXMLFile(osIMDSourceFilename.c_str());
@@ -76,7 +75,6 @@ void Spot::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
 
 		ReadXMLToStringList(CPLSearchXMLNode(psDimapNode,"Dataset_Sources"), szrImageMetadata);
 	}
-	
 }
 
 void Spot::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const

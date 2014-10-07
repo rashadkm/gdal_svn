@@ -37,6 +37,14 @@
 
 /**
 @brief Metadata reader for Spot
+
+TIFF filename:		aaaaaaaaaa.tif
+Metadata filename:	METADATA.DIM
+RPC filename:		
+
+Common metadata (from metadata filename):
+	MDName_SatelliteId:			MISSION, MISSION_INDEX
+	MDName_AcquisitionDateTime:	IMAGING_DATE, IMAGING_TIME
 */
 class Spot: public RSMDReader
 {

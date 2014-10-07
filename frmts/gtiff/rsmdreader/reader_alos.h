@@ -41,6 +41,10 @@ Metadata reader for ALOS
 TIFF filename:		IMG-sssssssssssssss-pppppppp.tif
 Metadata filename:	summary.txt
 RPC filename:		RPC-sssssssssssssss-pppppppp.txt
+
+Common metadata (from metadata filename):
+	MDName_SatelliteId:	Lbi_Satellite
+	MDName_CloudCover:	Img_CloudQuantityOfAllImage
 */
 class ALOS: public RSMDReader
 {

@@ -39,7 +39,6 @@ EROS::EROS(const char* pszFilename)
 	CPLString osDirName(CPLGetDirname(pszFilename));
 	CPLString osFileName(CPLGetBasename(pszFilename));
 	
-	// without IMG_ prefix
 	CPLString osBaseName( osFileName.substr(0, osFileName.find(".")) );
 	
 	osIMDSourceFilename = CPLFormFilename( osDirName.c_str(), osBaseName.c_str(), ".pass" );

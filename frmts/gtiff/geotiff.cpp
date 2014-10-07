@@ -250,6 +250,7 @@ class GTiffDataset : public GDALPamDataset
     GTiffDataset *poActiveDS; /* only used in actual base */
 
 	RSMDReader *pRSMDReader;
+	bool bMetadataHaveBeenRead;
 
     int         bScanDeferred;
     void        ScanDirectories();
@@ -4092,6 +4093,8 @@ GTiffDataset::GTiffDataset()
 
     pBaseMapping = NULL;
     nRefBaseMapping = 0;
+
+	bMetadataHaveBeenRead = false;
 }
 
 /************************************************************************/
@@ -10808,7 +10811,7 @@ char **GTiffDataset::GetMetadataDomainList()
 char **GTiffDataset::GetMetadata( const char * pszDomain )
 
 {
-	if (pRSMDReader != NULL)
+	if (pRSMDReader != NULL && !bMetadataHaveBeenRead)
 	{
 		CPLStringList metadata = pRSMDReader->GetMetadata();
 		
@@ -10853,6 +10856,8 @@ char **GTiffDataset::GetMetadata( const char * pszDomain )
 		{
 			oGTiffMDMD.SetMetadata( osRPCMD.List(), "RPC" );
 		}
+
+		bMetadataHaveBeenRead = true;
 	}
 
     if( pszDomain != NULL && EQUAL(pszDomain,"ProxyOverviewRequest") )
@@ -10917,7 +10922,7 @@ const char *GTiffDataset::GetMetadataItem( const char * pszName,
                                            const char * pszDomain )
 
 {
-    if (pRSMDReader != NULL)
+    if (pRSMDReader != NULL && !bMetadataHaveBeenRead)
 	{
 		CPLStringList metadata = pRSMDReader->GetMetadata();
 		
@@ -10962,6 +10967,8 @@ const char *GTiffDataset::GetMetadataItem( const char * pszName,
 		{
 			oGTiffMDMD.SetMetadata( osRPCMD.List(), "RPC" );
 		}
+
+		bMetadataHaveBeenRead = true;
 	}
     
     if( pszDomain != NULL && EQUAL(pszDomain,"ProxyOverviewRequest") )

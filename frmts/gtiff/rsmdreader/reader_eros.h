@@ -37,6 +37,13 @@
 
 /**
 @brief Metadata reader for EROS
+
+TIFF filename:		aaaaaaa.bb.ccc.tif
+Metadata filename:	aaaaaaa.pass
+
+Common metadata (from metadata filename):
+	MDName_SatelliteId:	satellite
+	MDName_AcquisitionDateTime:	sweep_start_utc, sweep_end_utc
 */
 class EROS: public RSMDReader
 {
