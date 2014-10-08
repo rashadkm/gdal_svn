@@ -84,7 +84,8 @@ void Pleiades::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
 			return;
 
 		CPLStringList expulsionNodeNames;
-		ReadXMLToStringList(CPLSearchXMLNode(psDimapNode,"Dataset_Sources"), expulsionNodeNames, szrImageMetadata);
+		//ReadXMLToStringList(CPLSearchXMLNode(psDimapNode,"Dataset_Sources"), expulsionNodeNames, szrImageMetadata);
+		ReadXMLToStringList(psDimapNode, expulsionNodeNames, szrImageMetadata);
 	}
 	
 }
