@@ -49,9 +49,15 @@ const char* GetCPLXMLNodeTextValue(const CPLXMLNode* psNode)
 	return NULL;
 }
 
-void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues, CPLString& osRootNodeName)
+void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues, CPLString& osRootNodeName, const CPLStringList& expulsionNodeNames)
 {
-	if (psNode->eType == 1)
+	if (psNode->eType == CXT_Element)
+	{
+		if( expulsionNodeNames.FindString(psNode->pszValue) != -1 )
+			return;
+	}
+
+	if (psNode->eType == CXT_Text)
 	{
 		if( szFullName.size() != 0)
 		{
@@ -68,12 +74,12 @@ void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues,
 
 	CPLXMLNode* psNodeChildren = psNode->psChild;
 	if (psNodeChildren != NULL)
-		ReadXML(psNodeChildren, szFullName + psNode->pszValue + ".", szlValues, osRootNodeName);
+		ReadXML(psNodeChildren, szFullName + psNode->pszValue + ".", szlValues, osRootNodeName, expulsionNodeNames);
 
 	
 	CPLXMLNode* psNodeNeighbor = psNode->psNext;
 	if (psNodeNeighbor != NULL)
-		ReadXML(psNodeNeighbor, szFullName, szlValues, osRootNodeName);
+		ReadXML(psNodeNeighbor, szFullName, szlValues, osRootNodeName, expulsionNodeNames);
 
 	delete psNodeChildren;
 	delete psNodeNeighbor;
@@ -81,10 +87,10 @@ void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues,
 	return;
 }
 
-void ReadXMLToStringList(CPLXMLNode* psNode, CPLStringList& szlValues)
+void ReadXMLToStringList(CPLXMLNode* psNode, const CPLStringList& expulsionNodeNames, CPLStringList& szlValues)
 {
 	if (psNode != NULL)
-		ReadXML(psNode->psChild, "", szlValues, CPLString(psNode->pszValue));
+		ReadXML(psNode->psChild, "", szlValues, CPLString(psNode->pszValue), expulsionNodeNames);
 }
 
 const char *CPLParseNameTabValue(const char *pszNameValue, char **ppszKey )

@@ -69,8 +69,9 @@ void RDK1::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 		{
 			return;
 		}
-			
-		ReadXMLToStringList(psRootNode, szrBadXMLMetadata);
+		
+		CPLStringList expulsionNodeNames;
+		ReadXMLToStringList(psRootNode, szrBadXMLMetadata, expulsionNodeNames);
 	}
 
 	for(int i = 0; i < szrBadXMLMetadata.size(); i++)

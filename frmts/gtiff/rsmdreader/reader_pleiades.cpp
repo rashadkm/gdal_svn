@@ -83,7 +83,8 @@ void Pleiades::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
 		if(psDimapNode == NULL)
 			return;
 
-		ReadXMLToStringList(CPLSearchXMLNode(psDimapNode,"Dataset_Sources"), szrImageMetadata);
+		CPLStringList expulsionNodeNames;
+		ReadXMLToStringList(CPLSearchXMLNode(psDimapNode,"Dataset_Sources"), expulsionNodeNames, szrImageMetadata);
 	}
 	
 }
@@ -132,7 +133,8 @@ void Pleiades::ReadRPCFromXML(RSMDRPC& rRPC) const
 			return;
 
 		CPLStringList szRPCdata;
-		ReadXMLToStringList(CPLSearchXMLNode(psRootNode, "Global_RFM"), szrRPC);
+		CPLStringList expulsionNodeNames;
+		ReadXMLToStringList(CPLSearchXMLNode(psRootNode, "Global_RFM"), expulsionNodeNames, szrRPC);
 	}
 
 	const char* szpLineOffset = szrRPC.FetchNameValue("RFM_Validity.LINE_OFF");

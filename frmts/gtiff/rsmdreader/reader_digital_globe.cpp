@@ -102,8 +102,9 @@ void DigitalGlobe::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) con
 		{
 			return;
 		}
-			
-		ReadXMLToStringList(CPLSearchXMLNode(psisdNode, "IMD"), szrImageMetadata);
+		
+		CPLStringList expulsionNodeNames;
+		ReadXMLToStringList(CPLSearchXMLNode(psisdNode, "IMD"), expulsionNodeNames, szrImageMetadata);
 	}
 }
 
@@ -240,7 +241,8 @@ void DigitalGlobe::ReadRPCFromXML(RSMDRPC& rRPC) const
 			return;
 
 		CPLStringList szRPCdata;
-		ReadXMLToStringList(CPLSearchXMLNode(psisdNode, "RPB"), szrRPC);
+		CPLStringList expulsionNodeNames;
+		ReadXMLToStringList(CPLSearchXMLNode(psisdNode, "RPB"), expulsionNodeNames, szrRPC);
 	}
 
 	const char* szpLineOffset = szrRPC.FetchNameValue("image.lineoffset");

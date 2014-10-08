@@ -103,20 +103,14 @@ namespace
 			}
 			else
 			{
-				/*
-					Not parse the parameters in groups
-				*/
-
-				/*
 				int i;
 				for( i = 0; osLine.c_str()[i] != '\0'; i++ )
 				{
 					if( osLine.c_str()[i] != '\t')
 						break;
 				}
-				const char* value = CPLParseIMDNameValue(osLine.c_str() + i, &ppszKey);
+				const char* value = CPLParseNameTabValue(osLine.c_str() + i, &ppszKey);
 				oslRPC.AddNameValue(CPLString().Printf("%s.%s",osGroupName.c_str(), ppszKey).c_str(), value);
-				*/
 			}
 			
 			CPLFree( ppszKey ); 
@@ -131,11 +125,12 @@ Kompsat::Kompsat(const char* pszFilename)
 {
 	osIMDSourceFilename = GDALFindAssociatedFile( pszFilename, "eph", NULL, 0 );
 	osRPCSourceFilename = GDALFindAssociatedFile( pszFilename, "rpc", NULL, 0 );
+	osIMDSourceFilenameTXT = GDALFindAssociatedFile( pszFilename, "txt", NULL, 0 );
 };
 
 const bool Kompsat::IsFullCompliense() const
 {
-	if (osIMDSourceFilename != "" && osRPCSourceFilename != "")
+	if (!osIMDSourceFilename.empty())
 		return true;
         
 	return false;
@@ -143,7 +138,7 @@ const bool Kompsat::IsFullCompliense() const
 
 void Kompsat::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 {
-	if (osIMDSourceFilename != "" && osRPCSourceFilename != "")
+	if (!osIMDSourceFilename.empty() || !osIMDSourceFilenameTXT.empty())
 	{
 		ReadImageMetadataFromWKT(szrImageMetadata);
 	}
@@ -151,9 +146,14 @@ void Kompsat::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 
 void Kompsat::ReadImageMetadataFromWKT(CPLStringList& szrImageMetadata) const
 {
-	if (osIMDSourceFilename != "")
+	if (!osIMDSourceFilename.empty())
 	{
 		ReadIMDFile( osIMDSourceFilename.c_str(), szrImageMetadata);
+	}
+
+	if (!osIMDSourceFilenameTXT.empty())
+	{
+		ReadIMDFile( osIMDSourceFilenameTXT.c_str(), szrImageMetadata);
 	}
 }
 
@@ -289,11 +289,14 @@ const CPLStringList Kompsat::DefineSourceFiles() const
 {
 	CPLStringList papszFileList;
 
-	if(osIMDSourceFilename != "" && osRPCSourceFilename != "")
-	{
+	if(!osIMDSourceFilename.empty())
 		papszFileList.AddString(osIMDSourceFilename.c_str());
+		
+	if(!osIMDSourceFilenameTXT.empty())
+		papszFileList.AddString(osIMDSourceFilenameTXT.c_str());
+
+	if(!osRPCSourceFilename.empty())
 		papszFileList.AddString(osRPCSourceFilename.c_str());
-	}
 
 	return papszFileList;
 }

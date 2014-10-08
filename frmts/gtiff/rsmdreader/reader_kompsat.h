@@ -39,7 +39,7 @@
 @brief Metadata reader for Kompsat
 
 TIFF filename:		aaaaaaaaaa.tif
-Metadata filename:	aaaaaaaaaa.eph
+Metadata filename:	aaaaaaaaaa.eph aaaaaaaaaa.eph
 RPC filename:		aaaaaaaaaa.rpc
 
 Common metadata (from metadata filename):
@@ -55,6 +55,7 @@ public:
 
 private:
 	CPLString osIMDSourceFilename;
+	CPLString osIMDSourceFilenameTXT;
 	CPLString osRPCSourceFilename;
 
 private:

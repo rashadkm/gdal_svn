@@ -36,8 +36,8 @@
 
 const char* GetCPLXMLNodeTextValue(const CPLXMLNode* psNode);
 
-void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues, CPLString& osRootNodeName);
-void ReadXMLToStringList(CPLXMLNode* psNode, CPLStringList& szlValues);
+void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues, CPLString& osRootNodeName, const CPLStringList& expulsionNodeNames);
+void ReadXMLToStringList(CPLXMLNode* psNode, const CPLStringList& expulsionNodeNames, CPLStringList& szlValues);
 
 const char *CPLParseNameTabValue(const char *pszNameValue, char **ppszKey );
 const char *CPLParseNameSpaceValue(const char *pszNameValue, char **ppszKey );

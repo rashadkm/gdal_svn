@@ -30,6 +30,8 @@
 #ifndef _READER_ABSTRACT_H_INCLUDED
 #define _READER_ABSTRACT_H_INCLUDED
 
+#include "remote_sensing_metadata.h"
+
 #include "cpl_string.h"
 
 const CPLString const MDPrefix_IMD= "IMD";
@@ -85,6 +87,10 @@ public:
 
 		CPLStringList szCommonImageMetadata;
 		GetCommonImageMetadata(szImageMetadata, szCommonImageMetadata);
+		if( CSLFindName(szCommonImageMetadata.List(), MDName_CloudCover.c_str()) == -1)
+		{
+			szCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), "0");
+		}
 		for(int i = 0; i < szCommonImageMetadata.size(); ++i)
 		{
 			szMetadata.AddString(CPLString().Printf("%s.%s",MDPrefix_Common_IMD.c_str(), szCommonImageMetadata[i]).c_str());

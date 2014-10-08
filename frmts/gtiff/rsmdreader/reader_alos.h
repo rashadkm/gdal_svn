@@ -43,8 +43,9 @@ Metadata filename:	summary.txt
 RPC filename:		RPC-sssssssssssssss-pppppppp.txt
 
 Common metadata (from metadata filename):
-	MDName_SatelliteId:	Lbi_Satellite
-	MDName_CloudCover:	Img_CloudQuantityOfAllImage
+	MDName_AcquisitionDateTime:	Img_SceneCenterDateTime or Lbi_ObservationDate
+	MDName_SatelliteId:			Lbi_Satellite
+	MDName_CloudCover:			Img_CloudQuantityOfAllImage
 */
 class ALOS: public RSMDReader
 {

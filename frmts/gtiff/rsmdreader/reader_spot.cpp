@@ -72,28 +72,33 @@ void Spot::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
 		CPLXMLNode* psDimapNode = psNode->psNext->psNext;
 		if(psDimapNode == NULL)
 			return;
-
-		ReadXMLToStringList(CPLSearchXMLNode(psDimapNode,"Dataset_Sources"), szrImageMetadata);
+		
+		CPLStringList expulsionNodeNames;
+		expulsionNodeNames.AddString("Sensor_Calibration");
+		expulsionNodeNames.AddString("Ephemeris");
+		expulsionNodeNames.AddString("Satellite_Attitudes");
+		expulsionNodeNames.AddString("Instrument_Look_Angles_List");
+		ReadXMLToStringList(psDimapNode, expulsionNodeNames, szrImageMetadata);
 	}
 }
 
 void Spot::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const
 {
-	if( CSLFindName(szrImageMetadata.List(), "Source_Information.Scene_Source.MISSION") != -1 &&
-		CSLFindName(szrImageMetadata.List(), "Source_Information.Scene_Source.MISSION_INDEX") != -1)
+	if( CSLFindName(szrImageMetadata.List(), "Dataset_Sources.Source_Information.Scene_Source.MISSION") != -1 &&
+		CSLFindName(szrImageMetadata.List(), "Dataset_Sources.Source_Information.Scene_Source.MISSION_INDEX") != -1)
 	{
-		CPLString MissionValue = CSLFetchNameValue(szrImageMetadata.List(), "Source_Information.Scene_Source.MISSION");
-		CPLString MissionIndexValue = CSLFetchNameValue(szrImageMetadata.List(), "Source_Information.Scene_Source.MISSION_INDEX");
+		CPLString MissionValue = CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Information.Scene_Source.MISSION");
+		CPLString MissionIndexValue = CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Information.Scene_Source.MISSION_INDEX");
 		CPLString SatelliteId = MissionValue + " " + MissionIndexValue;
 
 		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteId.c_str());
 	}
 
-	if( CSLFindName(szrImageMetadata.List(), "Source_Information.Scene_Source.IMAGING_DATE") != -1 &&
-			CSLFindName(szrImageMetadata.List(), "Source_Information.Scene_Source.IMAGING_TIME") != -1)
+	if( CSLFindName(szrImageMetadata.List(), "Dataset_Sources.Source_Information.Scene_Source.IMAGING_DATE") != -1 &&
+			CSLFindName(szrImageMetadata.List(), "Dataset_Sources.Source_Information.Scene_Source.IMAGING_TIME") != -1)
 	{
-		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Source_Information.Scene_Source.IMAGING_TIME");
-		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "Source_Information.Scene_Source.IMAGING_DATE");
+		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Information.Scene_Source.IMAGING_TIME");
+		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Information.Scene_Source.IMAGING_DATE");
 		CPLString AcqisitionDateTime = osAcqisitionDate + " " + osAcqisitionTime;
 
 		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), AcqisitionDateTime.c_str());

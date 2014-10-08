@@ -91,6 +91,17 @@ void ALOS::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 
 void ALOS::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const
 {
+	if( CSLFindName(szrImageMetadata.List(), "Img_SceneCenterDateTime") != -1)
+	{
+		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Img_SceneCenterDateTime");
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTime.c_str());
+	}
+	else if ( CSLFindName(szrImageMetadata.List(), "Lbi_ObservationDate") != -1)
+	{
+		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Lbi_ObservationDate");
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTime.c_str());
+	}
+
 	if( CSLFindName(szrImageMetadata.List(), "Lbi_Satellite") != -1)
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "Lbi_Satellite");
