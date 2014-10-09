@@ -49,7 +49,7 @@ const char* GetCPLXMLNodeTextValue(const CPLXMLNode* psNode)
 	return NULL;
 }
 
-void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues, CPLString& osRootNodeName, const CPLStringList& expulsionNodeNames)
+void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues, const CPLString& osRootNodeName, const CPLStringList& expulsionNodeNames)
 {
 	if (psNode->eType == CXT_Element)
 	{
@@ -90,7 +90,11 @@ void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues,
 void ReadXMLToStringList(CPLXMLNode* psNode, const CPLStringList& expulsionNodeNames, CPLStringList& szlValues)
 {
 	if (psNode != NULL)
-		ReadXML(psNode->psChild, "", szlValues, CPLString(psNode->pszValue), expulsionNodeNames);
+		ReadXML(psNode->psChild, 
+		"", 
+		szlValues, 
+		CPLString(psNode->pszValue), 
+		expulsionNodeNames);
 }
 
 const char *CPLGoodParseNameValue(const char *pszNameValue, char **ppszKey, const char separator)

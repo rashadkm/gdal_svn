@@ -36,7 +36,7 @@
 
 const char* GetCPLXMLNodeTextValue(const CPLXMLNode* psNode);
 
-void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues, CPLString& osRootNodeName, const CPLStringList& expulsionNodeNames);
+void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues, const CPLString& osRootNodeName, const CPLStringList& expulsionNodeNames);
 void ReadXMLToStringList(CPLXMLNode* psNode, const CPLStringList& expulsionNodeNames, CPLStringList& szlValues);
 
 const char *CPLGoodParseNameValue(const char *pszNameValue, char **ppszKey, const char separator);

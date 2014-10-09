@@ -34,9 +34,9 @@
 
 #include "cpl_string.h"
 
-const CPLString const MDPrefix_IMD= "IMD";
-const CPLString const MDPrefix_RPC= "RPC";
-const CPLString const MDPrefix_Common_IMD= "IMAGERY";
+const CPLString MDPrefix_IMD= "IMD";
+const CPLString MDPrefix_RPC= "RPC";
+const CPLString MDPrefix_Common_IMD= "IMAGERY";
 
 typedef struct
 {
