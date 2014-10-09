@@ -27,20 +27,46 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
-#ifndef _CPLXML_UTILS_H_INCLUDED
-#define _CPLXML_UTILS_H_INCLUDED
-
-#include "cpl_minixml.h"
+#ifndef _PLEIADES_RAPIDEYE_H_INCLUDED
+#define _PLEIADES_RAPIDEYE_H_INCLUDED
 
 #include "cpl_string.h"
+#include "gdal_priv.h"
 
-const char* GetCPLXMLNodeTextValue(const CPLXMLNode* psNode);
+#include "rsmd_reader.h"
 
-void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues, CPLString& osRootNodeName, const CPLStringList& expulsionNodeNames);
-void ReadXMLToStringList(CPLXMLNode* psNode, const CPLStringList& expulsionNodeNames, CPLStringList& szlValues);
+/**
+@brief Metadata reader for RapidEye
 
-const char *CPLGoodParseNameValue(const char *pszNameValue, char **ppszKey, const char separator);
+TIFF filename:		aaaaaaaa.tif
+Metadata filename:	aaaaaaaa_metadata.xml
+RPC filename:		
 
-bool GetAcqisitionTime(const CPLString& rsAcqisitionStartTime, const CPLString& rsAcqisitionEndTime, const CPLString& osDateTimeTemplate, CPLString& osAcqisitionTime);
+Common metadata (from metadata filename):
+	MDName_SatelliteId:			eop:serialIdentifier
+	MDName_CloudCover:			opt:cloudCoverPercentage
+	MDName_AcquisitionDateTime: re:acquisitionDateTime
 
-#endif /* _CPLXML_UTILS_H_INCLUDED */
+*/
+class RapidEye: public RSMDReader
+{
+public:
+	RapidEye(const char* pszFilename);
+    
+	const bool IsFullCompliense() const;
+
+private:
+	CPLString osIMDSourceFilename;
+
+private:
+	const CPLStringList DefineSourceFiles() const;
+
+	void ReadImageMetadata(CPLStringList& szrImageMetadata) const;
+
+	void GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const;
+
+	void ReadRPC(RSMDRPC& rRPC) const;
+
+};
+
+#endif /* _PLEIADES_RAPIDEYE_H_INCLUDED */

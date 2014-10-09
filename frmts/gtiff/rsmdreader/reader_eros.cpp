@@ -68,8 +68,8 @@ void EROS::ReadImageMetadata(CPLStringList& szrImageMetadata) const
     {
         CPLString osLine(papszLines[i]);
         
-        char *ppszKey = NULL;				
-		const char* value = CPLParseNameSpaceValue(osLine.c_str(), &ppszKey);
+        char *ppszKey = NULL;
+		const char* value = CPLGoodParseNameValue(osLine.c_str(), &ppszKey, ' ');
 
 		szrImageMetadata.AddNameValue(ppszKey, value);
 		

@@ -93,61 +93,39 @@ void ReadXMLToStringList(CPLXMLNode* psNode, const CPLStringList& expulsionNodeN
 		ReadXML(psNode->psChild, "", szlValues, CPLString(psNode->pszValue), expulsionNodeNames);
 }
 
-const char *CPLParseNameTabValue(const char *pszNameValue, char **ppszKey )
+const char *CPLGoodParseNameValue(const char *pszNameValue, char **ppszKey, const char separator)
 {
-    int  i;
     const char *pszValue;
 
-    for( i = 0; pszNameValue[i] != '\0'; i++ )
+	size_t iNameValueSymbol = 0;
+
+	while( pszNameValue[iNameValueSymbol] == ' ' || 
+			pszNameValue[iNameValueSymbol] == '\t' )
+		iNameValueSymbol++;
+
+	if( pszNameValue[iNameValueSymbol] == separator )
+		return NULL;
+
+	size_t iFirstSignificantSimbol = iNameValueSymbol;
+
+    for( iNameValueSymbol; pszNameValue[iNameValueSymbol] != '\0'; iNameValueSymbol++ )
     {
-        if( pszNameValue[i] == '\t')
+        if( pszNameValue[iNameValueSymbol] == separator )
         {
-            pszValue = pszNameValue + i + 1;
+            pszValue = pszNameValue + iNameValueSymbol + 1;
+
             while( *pszValue == ' ' || *pszValue == '\t' )
                 pszValue++;
 
             if( ppszKey != NULL )
             {
-                *ppszKey = (char *) CPLMalloc(i+1);
-                strncpy( *ppszKey, pszNameValue, i );
-                (*ppszKey)[i] = '\0';
-                while( i > 0 && (*ppszKey)[i] == ' ')
-                {
-                    (*ppszKey)[i] = '\0';
-                    i--;
-                }
-            }
+				size_t iKey = iNameValueSymbol;
+				while( pszNameValue[iKey-1] == ' ' || pszNameValue[iKey-1] == '\t' )
+					iKey--;
 
-            return pszValue;
-        }
-    }
-
-    return NULL;
-}
-
-const char *CPLParseNameSpaceValue(const char *pszNameValue, char **ppszKey )
-{
-    int  i;
-    const char *pszValue;
-
-    for( i = 0; pszNameValue[i] != '\0'; i++ )
-    {
-        if( pszNameValue[i] == ' ')
-        {
-            pszValue = pszNameValue + i + 1;
-            while( *pszValue == ' ' || *pszValue == '\t' )
-                pszValue++;
-
-            if( ppszKey != NULL )
-            {
-                *ppszKey = (char *) CPLMalloc(i+1);
-                strncpy( *ppszKey, pszNameValue, i );
-                (*ppszKey)[i] = '\0';
-                while( i > 0 && (*ppszKey)[i] == ' ')
-                {
-                    (*ppszKey)[i] = '\0';
-                    i--;
-                }
+                *ppszKey = (char *) CPLMalloc(iKey - iFirstSignificantSimbol + 1);
+                strncpy( *ppszKey, pszNameValue + iFirstSignificantSimbol, iKey - iFirstSignificantSimbol );
+                (*ppszKey)[iKey - iFirstSignificantSimbol] = '\0';
             }
 
             return pszValue;

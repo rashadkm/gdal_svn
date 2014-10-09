@@ -39,7 +39,7 @@
 @brief Metadata reader for Kompsat
 
 TIFF filename:		aaaaaaaaaa.tif
-Metadata filename:	aaaaaaaaaa.eph aaaaaaaaaa.eph
+Metadata filename:	aaaaaaaaaa.eph aaaaaaaaaa.txt
 RPC filename:		aaaaaaaaaa.rpc
 
 Common metadata (from metadata filename):

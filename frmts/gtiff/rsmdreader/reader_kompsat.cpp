@@ -98,7 +98,7 @@ namespace
 			
 			if (osGroupName.empty())
 			{
-				const char* value = CPLParseNameTabValue(osLine.c_str(), &ppszKey);
+				const char* value = CPLGoodParseNameValue(osLine.c_str(), &ppszKey, '\t');
 				oslRPC.AddNameValue(ppszKey, value);
 			}
 			else
@@ -109,13 +109,15 @@ namespace
 					if( osLine.c_str()[i] != '\t')
 						break;
 				}
-				const char* value = CPLParseNameTabValue(osLine.c_str() + i, &ppszKey);
+
+				const char* value = CPLGoodParseNameValue(osLine.c_str(), &ppszKey, '\t');
 				oslRPC.AddNameValue(CPLString().Printf("%s.%s",osGroupName.c_str(), ppszKey).c_str(), value);
 			}
 			
 			CPLFree( ppszKey ); 
         }
-        
+        CSLDestroy( papszLines );
+
 		return 0;
 	}
 }

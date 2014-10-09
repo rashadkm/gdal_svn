@@ -38,6 +38,9 @@
 #include "reader_spot.h"
 #include "reader_alos.h"
 #include "reader_eros.h"
+#include "reader_formosat.h"
+#include "reader_landsat.h"
+#include "reader_rapid_eye.h"
 
 RSMDReader* GetRSMDReader(const char* pszFilename, RSMDProvider rsdProvider)
 {
@@ -67,6 +70,12 @@ RSMDReader* GetRSMDReader(const CPLString pszFilename)
 		return new ALOS(pszFilename.c_str());
 	if(EROS(pszFilename.c_str()).IsFullCompliense())
 		return new EROS(pszFilename.c_str());
+	if(Formosat(pszFilename.c_str()).IsFullCompliense())
+		return new Formosat(pszFilename.c_str());
+	if(Landsat(pszFilename.c_str()).IsFullCompliense())
+		return new Landsat(pszFilename.c_str());
+	if(RapidEye(pszFilename.c_str()).IsFullCompliense())
+		return new RapidEye(pszFilename.c_str());
 	
 	return NULL;
 };

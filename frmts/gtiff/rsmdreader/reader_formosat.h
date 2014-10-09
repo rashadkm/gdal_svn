@@ -27,20 +27,43 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
-#ifndef _CPLXML_UTILS_H_INCLUDED
-#define _CPLXML_UTILS_H_INCLUDED
-
-#include "cpl_minixml.h"
+#ifndef _READER_FORMSAT_H_INCLUDED
+#define _READER_FORMSAT_H_INCLUDED
 
 #include "cpl_string.h"
+#include "gdal_priv.h"
 
-const char* GetCPLXMLNodeTextValue(const CPLXMLNode* psNode);
+#include "rsmd_reader.h"
 
-void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues, CPLString& osRootNodeName, const CPLStringList& expulsionNodeNames);
-void ReadXMLToStringList(CPLXMLNode* psNode, const CPLStringList& expulsionNodeNames, CPLStringList& szlValues);
+/**
+@brief Metadata reader for Formosat
 
-const char *CPLGoodParseNameValue(const char *pszNameValue, char **ppszKey, const char separator);
+TIFF filename:		aaaaaaaaaa.tif
+Metadata filename:	METADATA.DIM
+RPC filename:		
 
-bool GetAcqisitionTime(const CPLString& rsAcqisitionStartTime, const CPLString& rsAcqisitionEndTime, const CPLString& osDateTimeTemplate, CPLString& osAcqisitionTime);
+Common metadata (from metadata filename):
+	MDName_SatelliteId:			MISSION, MISSION_INDEX	
+	MDName_AcquisitionDateTime:	IMAGING_DATE, IMAGING_TIME
+*/
+class Formosat: public RSMDReader
+{
+public:
+	Formosat(const char* pszFilename);
+    
+	const bool IsFullCompliense() const;
 
-#endif /* _CPLXML_UTILS_H_INCLUDED */
+private:
+	CPLString osIMDSourceFilename;
+
+private:
+	const CPLStringList DefineSourceFiles() const;
+
+	void ReadImageMetadata(CPLStringList& szrImageMetadata) const;
+
+	void GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const;
+
+	void ReadRPC(RSMDRPC& rRPC) const;
+};
+
+#endif /* _READER_FORMSAT_H_INCLUDED */

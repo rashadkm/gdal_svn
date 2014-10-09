@@ -27,20 +27,46 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
-#ifndef _CPLXML_UTILS_H_INCLUDED
-#define _CPLXML_UTILS_H_INCLUDED
-
-#include "cpl_minixml.h"
+#ifndef _PLEIADES_LANDSAT_H_INCLUDED
+#define _PLEIADES_LANDSAT_H_INCLUDED
 
 #include "cpl_string.h"
+#include "gdal_priv.h"
 
-const char* GetCPLXMLNodeTextValue(const CPLXMLNode* psNode);
+#include "rsmd_reader.h"
 
-void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues, CPLString& osRootNodeName, const CPLStringList& expulsionNodeNames);
-void ReadXMLToStringList(CPLXMLNode* psNode, const CPLStringList& expulsionNodeNames, CPLStringList& szlValues);
+/**
+@brief Metadata reader for Landsat
 
-const char *CPLGoodParseNameValue(const char *pszNameValue, char **ppszKey, const char separator);
+TIFF filename:		xxxxxx_aaa.tif
+Metadata filename:	xxxxxx_MTL.txt
+RPC filename:		
 
-bool GetAcqisitionTime(const CPLString& rsAcqisitionStartTime, const CPLString& rsAcqisitionEndTime, const CPLString& osDateTimeTemplate, CPLString& osAcqisitionTime);
+Common metadata (from metadata filename):
+	MDName_SatelliteId:			SPACECRAFT_ID
+	MDName_CloudCover:			CLOUD_COVER (Landsat 8)
+	MDName_AcquisitionDateTime: ACQUISITION_DATE, SCENE_CENTER_SCAN_TIME (Landsat 5,7) or DATE_ACQUIRED, SCENE_CENTER_TIME (Landsat 8);
 
-#endif /* _CPLXML_UTILS_H_INCLUDED */
+*/
+class Landsat: public RSMDReader
+{
+public:
+	Landsat(const char* pszFilename);
+    
+	const bool IsFullCompliense() const;
+
+private:
+	CPLString osIMDSourceFilename;
+
+private:
+	const CPLStringList DefineSourceFiles() const;
+
+	void ReadImageMetadata(CPLStringList& szrImageMetadata) const;
+
+	void GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const;
+
+	void ReadRPC(RSMDRPC& rRPC) const;
+
+};
+
+#endif /* _PLEIADES_LANDSAT_H_INCLUDED */

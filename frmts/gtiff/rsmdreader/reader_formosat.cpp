@@ -29,13 +29,13 @@
 
 #include "cplkeywordparser.h"
 
-#include "reader_spot.h"
+#include "reader_formosat.h"
 
 #include "remote_sensing_metadata.h"
 #include "utils.h"
 
-Spot::Spot(const char* pszFilename)
-	:RSMDReader(pszFilename, "Spot")
+Formosat::Formosat(const char* pszFilename)
+	:RSMDReader(pszFilename, "Formosat")
 {
 	CPLString osDirName = CPLGetDirname(pszFilename);
 	osIMDSourceFilename = CPLFormFilename( osDirName.c_str(), "METADATA.DIM", NULL );
@@ -47,7 +47,7 @@ Spot::Spot(const char* pszFilename)
 	}
 };
 
-const bool Spot::IsFullCompliense() const
+const bool Formosat::IsFullCompliense() const
 {
 	if( !osIMDSourceFilename.empty() )
 	{
@@ -67,7 +67,7 @@ const bool Spot::IsFullCompliense() const
 		if(psMDProfileValue == NULL && psMDProfileValue->eType != CXT_Text)
 			return false;
 
-		if( !EQUALN(psMDProfileValue->pszValue, "SPOT", 4) )
+		if( !EQUALN(psMDProfileValue->pszValue, "FORMOSAT", 8) )
 			return false;
 
 		return true;
@@ -75,15 +75,9 @@ const bool Spot::IsFullCompliense() const
 	return false;
 }
 
-void Spot::ReadImageMetadata(CPLStringList& szrImageMetadata) const
+void Formosat::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 {
-	printf(">>> Spot::ReadImageMetadata\n");
-	ReadImageMetadataFromXML(szrImageMetadata);
-}
-
-void Spot::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
-{
-	if(osIMDSourceFilename != "")
+	if(!osIMDSourceFilename.empty())
 	{
 		CPLXMLNode* psNode = CPLParseXMLFile(osIMDSourceFilename.c_str());
 		if(psNode == NULL)
@@ -102,7 +96,7 @@ void Spot::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
 	}
 }
 
-void Spot::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const
+void Formosat::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const
 {
 	if( CSLFindName(szrImageMetadata.List(), "Dataset_Sources.Source_Information.Scene_Source.MISSION") != -1 &&
 		CSLFindName(szrImageMetadata.List(), "Dataset_Sources.Source_Information.Scene_Source.MISSION_INDEX") != -1)
@@ -125,11 +119,11 @@ void Spot::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList
 	}
 }
 
-void Spot::ReadRPC(RSMDRPC& rRPC) const
+void Formosat::ReadRPC(RSMDRPC& rRPC) const
 {
 }
 
-const CPLStringList Spot::DefineSourceFiles() const
+const CPLStringList Formosat::DefineSourceFiles() const
 {
 	CPLStringList papszFileList;
 	if(osIMDSourceFilename != "")

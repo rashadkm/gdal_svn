@@ -73,7 +73,7 @@ void Pleiades::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 void Pleiades::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
 {
 	
-	if(osXMLIMDSourceFilename != "")
+	if(!osXMLIMDSourceFilename.empty())
 	{
 		CPLXMLNode* psNode = CPLParseXMLFile(osXMLIMDSourceFilename.c_str());
 		if(psNode == NULL)
@@ -123,7 +123,7 @@ void Pleiades::ReadRPCFromXML(RSMDRPC& rRPC) const
 {
 	
 	CPLStringList szrRPC;
-	if(osXMLRPCSourceFilename != "")
+	if(!osXMLRPCSourceFilename.empty())
 	{
 		CPLXMLNode* psNode = CPLParseXMLFile(osXMLRPCSourceFilename.c_str());
 		if(psNode == NULL)
@@ -230,11 +230,11 @@ void Pleiades::ReadRPCFromXML(RSMDRPC& rRPC) const
 const CPLStringList Pleiades::DefineSourceFiles() const
 {
 	CPLStringList papszFileList;
-	if(osXMLIMDSourceFilename != "")
+	if(!osXMLIMDSourceFilename.empty())
 	{
 		papszFileList.AddString(osXMLIMDSourceFilename.c_str());
 	}
-	if(osXMLRPCSourceFilename != "")
+	if(!osXMLRPCSourceFilename.empty())
 	{
 		papszFileList.AddString(osXMLRPCSourceFilename.c_str());
 	}
