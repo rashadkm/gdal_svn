@@ -80,12 +80,18 @@ void GeoEye::ReadImageMetadata(CPLStringList& szrImageMetadata) const
     char **papszLines = CSLLoad( osIMDSourceFilename.c_str() );
     if( papszLines == NULL )
         return;
-     
-    for( int i = 0; papszLines[i] != NULL; i++ )
+    
+	bool bInCompanyInformationSection = false;
+	bool bMetadataSection = false;
+	CPLString MetadataSectionName;
+
+	CPLString sMetadataPrefix;
+
+	for( int i = 0; papszLines[i] != NULL; i++ )
     {
         CPLString osLine(papszLines[i]);
-        
-        if( EQUALN( osLine, "Sensor:", 7) ||
+
+		if( EQUALN( osLine, "Sensor:", 7) ||
             EQUALN( osLine, "Percent Cloud Cover:", 20) ||
             EQUALN( osLine, "Acquisition Date/Time:", 22) )
 		{
@@ -96,6 +102,56 @@ void GeoEye::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 			
 			CPLFree( ppszKey ); 
 		}
+	}
+
+	bool bReadGroup = false;
+	CPLString sGroupName;
+	CPLString sGroupContent;
+
+    for( int i = 0; papszLines[i] != NULL; i++ )
+    {
+        CPLString osLine(papszLines[i]);
+		
+		if( osLine.empty() )
+			continue;
+
+		if( EQUALN( osLine.c_str(), "===",3) )
+		{
+			if (bReadGroup)
+			{
+				szrImageMetadata.AddNameValue( sGroupName.c_str(), sGroupContent.c_str() );
+			}
+
+			sGroupName.clear();
+			sGroupContent.Clear();
+			bReadGroup = false;
+
+			continue;
+		}
+	
+		if(!bReadGroup)
+		{
+			char *ppszKey = NULL;
+			const char* value = CPLGoodParseNameValue(osLine.c_str(), &ppszKey, ':');
+			
+			if(value != NULL)
+			{
+				szrImageMetadata.AddNameValue( ppszKey, value );
+			}
+			else
+			{
+				bReadGroup = true;
+				sGroupName = osLine;
+			}
+
+			CPLFree( ppszKey );
+		}
+		else
+		{
+			sGroupContent += "\n"+osLine;
+		}
+
+
     }
      
     CSLDestroy( papszLines );
