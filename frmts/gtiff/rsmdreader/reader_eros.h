@@ -27,13 +27,42 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
-#ifndef _REMOTE_SENSING_METADATA_H_INCLUDED
-#define _REMOTE_SENSING_METADATA_H_INCLUDED
+#ifndef _READER_EROS_H_INCLUDED
+#define _READER_EROS_H_INCLUDED
 
 #include "cpl_string.h"
+#include "gdal_priv.h"
 
-const CPLString MDName_AcquisitionDateTime = "AcquisitionDateTime";
-const CPLString MDName_SatelliteId = "SatelliteId";
-const CPLString MDName_CloudCover = "CloudCover";
+#include "rsmd_reader.h"
 
-#endif /* _REMOTE_SENSING_METADATA_H_INCLUDED */
+/**
+@brief Metadata reader for EROS
+
+TIFF filename:		aaaaaaa.bb.ccc.tif
+Metadata filename:	aaaaaaa.pass
+
+Common metadata (from metadata filename):
+	MDName_SatelliteId:	satellite
+	MDName_AcquisitionDateTime:	sweep_start_utc, sweep_end_utc
+*/
+class EROS: public RSMDReader
+{
+public:
+	EROS(const char* pszFilename);
+    
+	const bool IsFullCompliense() const;
+
+private:
+	CPLString osIMDSourceFilename;
+
+private:
+	const CPLStringList DefineSourceFiles() const;
+
+	void ReadImageMetadata(CPLStringList& szrImageMetadata) const;
+
+	void GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const;
+
+	void ReadRPC(RSMDRPC& rRPC) const;
+};
+
+#endif /* _READER_EROS_H_INCLUDED */

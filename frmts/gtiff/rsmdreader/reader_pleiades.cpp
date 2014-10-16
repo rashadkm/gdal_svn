@@ -1,3 +1,32 @@
+/******************************************************************************
+ * $Id$
+ *
+ * Project:  RSMDReader - Remote Sensing MetaData Reader
+ * Purpose:  Read remote sensing metadata from files from different providers like as DigitalGlobe, GeoEye et al.
+ * Author:   Alexander Lisovenko
+ *
+ ******************************************************************************
+ * Copyright (c) 2014 NextGIS <info@nextgis.ru>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ ****************************************************************************/
+
 #include "cplkeywordparser.h"
 
 #include "reader_pleiades.h"
@@ -12,8 +41,8 @@ Pleiades::Pleiades(const char* pszFilename)
 	CPLString osBaseName = CPLGetBasename(pszFilename);
 	osBaseName.replace(0,4,"");
 
-	osXMLIMDSourceFilename = CPLString().Printf("%s/DIM_%s.XML",osDirName.c_str(), osBaseName.c_str());
-	osXMLRPCSourceFilename = CPLString().Printf("%s/RPC_%s.XML",osDirName.c_str(), osBaseName.c_str());
+	osXMLIMDSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("DIM_%s", osBaseName.c_str()), ".XML" );
+	osXMLRPCSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("RPC_%s", osBaseName.c_str()), ".XML" );
 
 	VSIStatBufL sStatBuf;
 	if( VSIStatExL( osXMLIMDSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
@@ -30,7 +59,6 @@ const bool Pleiades::IsFullCompliense() const
 {
 	if (!osXMLIMDSourceFilename.empty() && !osXMLRPCSourceFilename.empty())
 	{
-		printf("	>>> return true\n");
 		return true;
 	}
 
@@ -45,7 +73,7 @@ void Pleiades::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 void Pleiades::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
 {
 	
-	if(osXMLIMDSourceFilename != "")
+	if(!osXMLIMDSourceFilename.empty())
 	{
 		CPLXMLNode* psNode = CPLParseXMLFile(osXMLIMDSourceFilename.c_str());
 		if(psNode == NULL)
@@ -53,9 +81,11 @@ void Pleiades::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
 
 		CPLXMLNode* psDimapNode = psNode->psNext->psNext;
 		if(psDimapNode == NULL)
-			printf("Dimap_Document node not found\n");
+			return;
 
-		ReadXML(CPLSearchXMLNode(psDimapNode,"Dataset_Sources"), szrImageMetadata);
+		CPLStringList expulsionNodeNames;
+		//ReadXMLToStringList(CPLSearchXMLNode(psDimapNode,"Dataset_Sources"), expulsionNodeNames, szrImageMetadata);
+		ReadXMLToStringList(psDimapNode, expulsionNodeNames, szrImageMetadata);
 	}
 	
 }
@@ -63,12 +93,14 @@ void Pleiades::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
 void Pleiades::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const
 {
 	//if( CSLFindName(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.INSTRUMENT_INDEX") != -1)
-	if( CSLFindName(szrImageMetadata.List(), "Source_Identification.Strip_Source.INSTRUMENT_INDEX") != -1)
+	if( CSLFindName(szrImageMetadata.List(), "Source_Identification.Strip_Source.MISSION") != -1 &&
+		CSLFindName(szrImageMetadata.List(), "Source_Identification.Strip_Source.MISSION_INDEX") != -1)
 	{
 		//CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.INSTRUMENT_INDEX");
-		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.INSTRUMENT_INDEX");
-		CPLString pszMD = MDName_SatelliteId + "=" + SatelliteIdValue;
-		szrCommonImageMetadata.AddString(pszMD.c_str());
+		CPLString SatelliteIdValue = CPLSPrintf( "%s.%s",
+			CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.MISSION"),
+			CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.MISSION_INDEX") );
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "Source_Identification.Strip_Source.IMAGING_DATE") != -1 &&
@@ -76,9 +108,8 @@ void Pleiades::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLString
 	{
 		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.IMAGING_TIME");
 		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.IMAGING_DATE");
-		
-		CPLString pszMD = MDName_AcquisitionDateTime + "=" + osAcqisitionDate + " " + osAcqisitionTime;
-		szrCommonImageMetadata.AddString(pszMD.c_str());
+		CPLString AcqisitionDateTime = osAcqisitionDate + " " + osAcqisitionTime;
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), AcqisitionDateTime.c_str());
 	}
 
 
@@ -92,7 +123,7 @@ void Pleiades::ReadRPCFromXML(RSMDRPC& rRPC) const
 {
 	
 	CPLStringList szrRPC;
-	if(osXMLRPCSourceFilename != "")
+	if(!osXMLRPCSourceFilename.empty())
 	{
 		CPLXMLNode* psNode = CPLParseXMLFile(osXMLRPCSourceFilename.c_str());
 		if(psNode == NULL)
@@ -100,10 +131,11 @@ void Pleiades::ReadRPCFromXML(RSMDRPC& rRPC) const
 
 		CPLXMLNode* psRootNode = psNode->psNext;
 		if(psRootNode == NULL)
-			printf("Dimap_Document node not found\n");
+			return;
 
 		CPLStringList szRPCdata;
-		ReadXML(CPLSearchXMLNode(psRootNode, "Global_RFM"), szrRPC);
+		CPLStringList expulsionNodeNames;
+		ReadXMLToStringList(CPLSearchXMLNode(psRootNode, "Global_RFM"), expulsionNodeNames, szrRPC);
 	}
 
 	const char* szpLineOffset = szrRPC.FetchNameValue("RFM_Validity.LINE_OFF");
@@ -198,11 +230,11 @@ void Pleiades::ReadRPCFromXML(RSMDRPC& rRPC) const
 const CPLStringList Pleiades::DefineSourceFiles() const
 {
 	CPLStringList papszFileList;
-	if(osXMLIMDSourceFilename != "")
+	if(!osXMLIMDSourceFilename.empty())
 	{
 		papszFileList.AddString(osXMLIMDSourceFilename.c_str());
 	}
-	if(osXMLRPCSourceFilename != "")
+	if(!osXMLRPCSourceFilename.empty())
 	{
 		papszFileList.AddString(osXMLRPCSourceFilename.c_str());
 	}

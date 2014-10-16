@@ -1,11 +1,42 @@
+/******************************************************************************
+ * $Id$
+ *
+ * Project:  RSMDReader - Remote Sensing MetaData Reader
+ * Purpose:  Read remote sensing metadata from files from different providers like as DigitalGlobe, GeoEye et al.
+ * Author:   Alexander Lisovenko
+ *
+ ******************************************************************************
+ * Copyright (c) 2014 NextGIS <info@nextgis.ru>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ ****************************************************************************/
+
 #ifndef _READER_ABSTRACT_H_INCLUDED
 #define _READER_ABSTRACT_H_INCLUDED
 
+#include "remote_sensing_metadata.h"
+
 #include "cpl_string.h"
 
-const CPLString const MDPrefix_IMD= "IMD";
-const CPLString const MDPrefix_RPC= "RPC";
-const CPLString const MDPrefix_Common_IMD= "IMAGERY";
+const CPLString MDPrefix_IMD= "IMD";
+const CPLString MDPrefix_RPC= "RPC";
+const CPLString MDPrefix_Common_IMD= "IMAGERY";
 
 typedef struct
 {
@@ -56,6 +87,10 @@ public:
 
 		CPLStringList szCommonImageMetadata;
 		GetCommonImageMetadata(szImageMetadata, szCommonImageMetadata);
+		if( CSLFindName(szCommonImageMetadata.List(), MDName_CloudCover.c_str()) == -1)
+		{
+			szCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), "0");
+		}
 		for(int i = 0; i < szCommonImageMetadata.size(); ++i)
 		{
 			szMetadata.AddString(CPLString().Printf("%s.%s",MDPrefix_Common_IMD.c_str(), szCommonImageMetadata[i]).c_str());

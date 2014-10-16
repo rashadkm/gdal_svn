@@ -250,6 +250,7 @@ class GTiffDataset : public GDALPamDataset
     GTiffDataset *poActiveDS; /* only used in actual base */
 
 	RSMDReader *pRSMDReader;
+	bool bMetadataHaveBeenRead;
 
     int         bScanDeferred;
     void        ScanDirectories();
@@ -364,19 +365,9 @@ class GTiffDataset : public GDALPamDataset
 
     int           bClipWarn;
 
-    CPLString     osRPBFile;
-    int           FindRPBFile();
-    CPLString     osRPCFile;
-    int           FindRPCFile();
-    CPLString     osIMDFile;
-    int           FindIMDFile();
-    CPLString     osPVLFile;
-    int           FindPVLFile();
-    int           bHasSearchedRPC;
-    void          LoadRPCRPB();
+    int           bHasSearchedRPC;;
     int           bHasSearchedIMD;
     int           bHasSearchedPVL;
-    void          LoadIMDPVL();
 
     int           bEXIFMetadataLoaded;
     void          LoadEXIFMetadata();
@@ -4102,6 +4093,8 @@ GTiffDataset::GTiffDataset()
 
     pBaseMapping = NULL;
     nRefBaseMapping = 0;
+
+	bMetadataHaveBeenRead = false;
 }
 
 /************************************************************************/
@@ -4250,6 +4243,8 @@ int GTiffDataset::Finalize()
         *ppoActiveDSRef = NULL;
     ppoActiveDSRef = NULL;
 
+    delete pRSMDReader;
+    
     bIsFinalized = TRUE;
 
     return bHasDroppedRef;
@@ -7408,6 +7403,7 @@ GDALDataset *GTiffDataset::OpenDir( GDALOpenInfo * poOpenInfo )
     poDS = new GTiffDataset();
     poDS->SetDescription( poOpenInfo->pszFilename );
     poDS->osFilename = poOpenInfo->pszFilename;
+	poDS->pRSMDReader = GetRSMDReader(poDS->osFilename);
     poDS->poActiveDS = poDS;
     poDS->fpL = fpL;
 
@@ -8682,6 +8678,7 @@ void GTiffDataset::ScanDirectories()
                  (nSubType & FILETYPE_MASK) != 0)
         {
             GTiffDataset* poDS = new GTiffDataset();
+			poDS->pRSMDReader = NULL;
             if( poDS->OpenOffset( hTIFF, ppoActiveDSRef, nThisDir, FALSE, 
                                   eAccess ) != CE_None
                 || poDS->GetRasterCount() == 0
@@ -9452,6 +9449,7 @@ GDALDataset *GTiffDataset::Create( const char * pszFilename,
     poDS->nSamplesPerPixel = (uint16) nBands;
     poDS->osFilename = pszFilename;
 
+	poDS->pRSMDReader = GetRSMDReader(poDS->osFilename);
     /* Avoid premature crystalization that will cause directory re-writting */
     /* if GetProjectionRef() or GetGeoTransform() are called on the newly created GeoTIFF */
     poDS->bLookedForProjection = TRUE;
@@ -10813,7 +10811,7 @@ char **GTiffDataset::GetMetadataDomainList()
 char **GTiffDataset::GetMetadata( const char * pszDomain )
 
 {
-	if (pRSMDReader != NULL)
+	if (pRSMDReader != NULL && !bMetadataHaveBeenRead)
 	{
 		CPLStringList metadata = pRSMDReader->GetMetadata();
 		
@@ -10858,6 +10856,8 @@ char **GTiffDataset::GetMetadata( const char * pszDomain )
 		{
 			oGTiffMDMD.SetMetadata( osRPCMD.List(), "RPC" );
 		}
+
+		bMetadataHaveBeenRead = true;
 	}
 
     if( pszDomain != NULL && EQUAL(pszDomain,"ProxyOverviewRequest") )
@@ -10922,15 +10922,65 @@ const char *GTiffDataset::GetMetadataItem( const char * pszName,
                                            const char * pszDomain )
 
 {
+    if (pRSMDReader != NULL && !bMetadataHaveBeenRead)
+	{
+		CPLStringList metadata = pRSMDReader->GetMetadata();
+		
+		CPLStringList osIMDMD;
+		CPLStringList osImageryMD;
+		CPLStringList osRPCMD;
+
+		for( int i = 0; i < metadata.size(); i++ )
+		{
+			//printf( "\t\t >>> metadata: %s\n", metadata[i] );
+			size_t found = CPLString(metadata[i]).rfind("IMD");
+			if (found == 0)
+			{
+				osIMDMD.AddString(metadata[i]);
+				continue;
+			}
+			found = CPLString(metadata[i]).rfind("IMAGERY");
+			if (found == 0)
+			{
+				osImageryMD.AddString(metadata[i]);
+				continue;
+			}
+			found = CPLString(metadata[i]).rfind("RPC");
+			if (found == 0)
+			{
+				osRPCMD.AddString(metadata[i]);
+				continue;
+			}
+		}
+		if(osIMDMD.size() > 0)
+		{
+			osIMDMD.AddNameValue("md_type", "imd");
+			oGTiffMDMD.SetMetadata( osIMDMD.List(), "IMD" );
+		}
+
+		if(osImageryMD.size() > 0)
+		{
+			oGTiffMDMD.SetMetadata( osImageryMD.List(), "IMAGERY" );
+		}
+
+		if(osRPCMD.size() > 0)
+		{
+			oGTiffMDMD.SetMetadata( osRPCMD.List(), "RPC" );
+		}
+
+		bMetadataHaveBeenRead = true;
+	}
+    
     if( pszDomain != NULL && EQUAL(pszDomain,"ProxyOverviewRequest") )
         return GDALPamDataset::GetMetadataItem( pszName, pszDomain );
 
+    /*
     else if( pszDomain != NULL && EQUAL(pszDomain,"RPC") )
         LoadRPCRPB();
 
     else if( pszDomain != NULL && EQUAL(pszDomain,"IMD") )
         LoadIMDPVL();
-
+    */
     else if( pszDomain != NULL && EQUAL(pszDomain,"SUBDATASETS") )
         ScanDirectories();
 
@@ -10981,190 +11031,6 @@ void *GTiffDataset::GetInternalHandle( const char * /* pszHandleName */ )
 
 {
     return hTIFF;
-}
-
-
-/************************************************************************/
-/*                           FindRPBFile()                             */
-/************************************************************************/
-
-int GTiffDataset::FindRPBFile()
-{
-    osRPBFile = GDALFindAssociatedFile( osFilename, "RPB", 
-                                        oOvManager.GetSiblingFiles(), 0 );
-
-    return osRPBFile != "";
-}
-
-/************************************************************************/
-/*                           FindIMDFile()                             */
-/************************************************************************/
-
-int GTiffDataset::FindIMDFile()
-{
-    osIMDFile = GDALFindAssociatedFile( osFilename, "IMD", 
-                                        oOvManager.GetSiblingFiles(), 0 );
-
-    return osIMDFile != "";
-}
-
-/************************************************************************/
-/*                           FindPVLFile()                             */
-/************************************************************************/
-
-int GTiffDataset::FindPVLFile()
-{
-    osPVLFile = GDALFindAssociatedFile( osFilename, "PVL", 
-                                        oOvManager.GetSiblingFiles(), 0 );
-
-    return osPVLFile != "";
-}
-
-/************************************************************************/
-/*                           FindRPCFile()                             */
-/************************************************************************/
-
-int GTiffDataset::FindRPCFile()
-{
-    CPLString osSrcPath = osFilename;
-    CPLString soPt(".");
-    size_t found = osSrcPath.rfind(soPt);
-    if (found == CPLString::npos)
-        return FALSE;
-    osSrcPath.replace (found, osSrcPath.size() - found, "_rpc.txt");
-    CPLString osTarget = osSrcPath; 
-
-    char** papszSiblingFiles = oOvManager.GetSiblingFiles();
-    if( papszSiblingFiles == NULL )
-    {
-        VSIStatBufL sStatBuf;
-
-        if( VSIStatExL( osTarget, &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
-        {
-            osSrcPath = osFilename;
-            osSrcPath.replace (found, osSrcPath.size() - found, "_RPC.TXT");
-            osTarget = osSrcPath; 
-
-            if( VSIStatExL( osTarget, &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
-            {
-                osSrcPath = osFilename;
-                osSrcPath.replace (found, osSrcPath.size() - found, "_rpc.TXT");
-                osTarget = osSrcPath; 
-
-                if( VSIStatExL( osTarget, &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
-                {
-                    return FALSE;
-                }
-            }
-        }
-    }
-    else
-    {
-        int iSibling = CSLFindString( papszSiblingFiles, 
-                                    CPLGetFilename(osTarget) );
-        if( iSibling < 0 )
-            return FALSE;
-
-        osTarget.resize(osTarget.size() - strlen(papszSiblingFiles[iSibling]));
-        osTarget += papszSiblingFiles[iSibling];
-    }
-
-    osRPCFile = osTarget;
-    return TRUE;
-}
-
-/************************************************************************/
-/*                            LoadRPCRPB()                              */
-/************************************************************************/
-
-void GTiffDataset::LoadRPCRPB()
-{
-    if (bHasSearchedRPC)
-        return;
-
-    bHasSearchedRPC = TRUE;
-
-    char **papszRPCMD = NULL;
-    /* Read Digital Globe .RPB file */
-    if (FindRPBFile())
-        papszRPCMD = GDALLoadRPBFile( osRPBFile.c_str(), NULL );
-
-    /* Read GeoEye _rpc.txt file */
-    if(papszRPCMD == NULL && FindRPCFile())
-        papszRPCMD = GDALLoadRPCFile( osRPCFile.c_str(), NULL );
-
-    if( papszRPCMD != NULL )
-    {
-        oGTiffMDMD.SetMetadata( papszRPCMD, "RPC" );
-        CSLDestroy( papszRPCMD );
-    }
-    else
-        ReadRPCTag();
-}
-
-/************************************************************************/
-/*                            LoadIMDPVL()                              */
-/************************************************************************/
-
-void GTiffDataset::LoadIMDPVL()
-{
-    if (!bHasSearchedIMD)
-    {
-        bHasSearchedIMD = TRUE;
-
-        if (FindIMDFile())
-        {
-            char **papszIMDMD = GDALLoadIMDFile( osIMDFile.c_str(), NULL );
-
-            if( papszIMDMD != NULL )
-            {
-                papszIMDMD = CSLSetNameValue( papszIMDMD, 
-                                                "md_type", "imd" );
-                oGTiffMDMD.SetMetadata( papszIMDMD, "IMD" );
-                CSLDestroy( papszIMDMD );
-            }
-        }
-    }
-    //the imd has priority
-    if (!bHasSearchedPVL && osIMDFile.empty())
-    {
-        bHasSearchedPVL = TRUE;
-
-        if (FindPVLFile())
-        {
-            /* -------------------------------------------------------------------- */
-            /*      Read file and parse.                                            */
-            /* -------------------------------------------------------------------- */
-            CPLKeywordParser oParser;
-
-            VSILFILE *fp = VSIFOpenL( osPVLFile.c_str(), "r" );
-
-            if( fp == NULL )
-                return;
-    
-            if( !oParser.Ingest( fp ) )
-            {
-                VSIFCloseL( fp );
-                return;
-            }
-
-            VSIFCloseL( fp );
-
-            /* -------------------------------------------------------------------- */
-            /*      Consider version changing.                                      */
-            /* -------------------------------------------------------------------- */
-            char **papszPVLMD = CSLDuplicate( oParser.GetAllKeywords() );
- 
-            if( papszPVLMD != NULL )
-            {
-                papszPVLMD = CSLSetNameValue( papszPVLMD, 
-                                                "md_type", "pvl" );
-                
-                oGTiffMDMD.SetMetadata( papszPVLMD, "IMD" );
-                CSLDestroy( papszPVLMD );
-            }
-        }
-    }
 }
 
 /************************************************************************/

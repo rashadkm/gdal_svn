@@ -1,5 +1,31 @@
-#include <iostream>
-#include <fstream>
+/******************************************************************************
+ * $Id$
+ *
+ * Project:  RSMDReader - Remote Sensing MetaData Reader
+ * Purpose:  Read remote sensing metadata from files from different providers like as DigitalGlobe, GeoEye et al.
+ * Author:   Alexander Lisovenko
+ *
+ ******************************************************************************
+ * Copyright (c) 2014 NextGIS <info@nextgis.ru>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ ****************************************************************************/
 
 #include "cplkeywordparser.h"
 #include "cpl_vsi_virtual.h"
@@ -14,7 +40,8 @@ GeoEye::GeoEye(const char* pszFilename)
 {
 	CPLString osDirName = CPLGetDirname(pszFilename);
 	CPLString osBaseName = CPLGetBasename(pszFilename);
-	osWKTRPCSourceFilename = CPLString().Printf("%s/%s_rpc.txt",osDirName.c_str(), osBaseName.c_str());
+	
+	osWKTRPCSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("%s_rpc", osBaseName.c_str()), ".txt" );
 
 	VSIStatBufL sStatBuf;
 	if( VSIStatExL( osWKTRPCSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
@@ -24,8 +51,7 @@ GeoEye::GeoEye(const char* pszFilename)
 
 
 	osIMDSourceFilename = "";
-	VSIFilesystemHandler *poFSHandler =
-        VSIFileManager::GetHandler( pszFilename );
+	VSIFilesystemHandler *poFSHandler = VSIFileManager::GetHandler( pszFilename );
 	char **papszFiles = NULL;
 	papszFiles = poFSHandler->ReadDir("./");
 	for( int i = 0; papszFiles[i] != NULL; i++ )
@@ -34,7 +60,7 @@ GeoEye::GeoEye(const char* pszFilename)
 		int iFound = osFileName.find("_metadata");
 		if( iFound != -1)
 		{
-			osIMDSourceFilename = CPLString().Printf("%s/%s",osDirName.c_str(), osFileName.c_str());;
+			osIMDSourceFilename = CPLFormFilename( osDirName.c_str(), osFileName.c_str(), NULL );
 			break;
 		}
     }
@@ -51,39 +77,25 @@ const bool GeoEye::IsFullCompliense() const
 
 void GeoEye::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 {	
-	std::ifstream ifs(osIMDSourceFilename);
-	
-	if( !ifs.is_open() )
-		return;
+    char **papszLines = CSLLoad( osIMDSourceFilename.c_str() );
+    if( papszLines == NULL )
+        return;
+    
+	bool bInCompanyInformationSection = false;
+	bool bMetadataSection = false;
+	CPLString MetadataSectionName;
 
-	while( ifs.good() )
-	{
-		CPLString osLine = "";
-		std::getline(ifs, osLine);
+	CPLString sMetadataPrefix;
 
-		if( strstr(osLine.c_str(),"Sensor:") != NULL )
+	for( int i = 0; papszLines[i] != NULL; i++ )
+    {
+        CPLString osLine(papszLines[i]);
+
+		if( EQUALN( osLine, "Sensor:", 7) ||
+            EQUALN( osLine, "Percent Cloud Cover:", 20) ||
+            EQUALN( osLine, "Acquisition Date/Time:", 22) )
 		{
-			char *ppszKey = NULL;				
-			const char* value = CPLParseNameValue(osLine.c_str(), &ppszKey);
-
-			szrImageMetadata.AddNameValue(ppszKey, value);
-			
-			CPLFree( ppszKey ); 
-		}
-
-		if( strstr(osLine.c_str(),"Percent Cloud Cover:") != NULL )
-		{
-			char *ppszKey = NULL;				
-			const char* value = CPLParseNameValue(osLine.c_str(), &ppszKey);
-
-			szrImageMetadata.AddNameValue(ppszKey, value);
-			
-			CPLFree( ppszKey ); 
-		}
-
-		if( strstr(osLine.c_str(),"Acquisition Date/Time:") != NULL )
-		{
-			char *ppszKey = NULL;				
+			char *ppszKey = NULL;
 			const char* value = CPLParseNameValue(osLine.c_str(), &ppszKey);
 
 			szrImageMetadata.AddNameValue(ppszKey, value);
@@ -91,6 +103,58 @@ void GeoEye::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 			CPLFree( ppszKey ); 
 		}
 	}
+
+	bool bReadGroup = false;
+	CPLString sGroupName;
+	CPLString sGroupContent;
+
+    for( int i = 0; papszLines[i] != NULL; i++ )
+    {
+        CPLString osLine(papszLines[i]);
+		
+		if( osLine.empty() )
+			continue;
+
+		if( EQUALN( osLine.c_str(), "===",3) )
+		{
+			if (bReadGroup)
+			{
+				szrImageMetadata.AddNameValue( sGroupName.c_str(), sGroupContent.c_str() );
+			}
+
+			sGroupName.clear();
+			sGroupContent.Clear();
+			bReadGroup = false;
+
+			continue;
+		}
+	
+		if(!bReadGroup)
+		{
+			char *ppszKey = NULL;
+			const char* value = CPLGoodParseNameValue(osLine.c_str(), &ppszKey, ':');
+			
+			if(value != NULL)
+			{
+				szrImageMetadata.AddNameValue( ppszKey, value );
+			}
+			else
+			{
+				bReadGroup = true;
+				sGroupName = osLine;
+			}
+
+			CPLFree( ppszKey );
+		}
+		else
+		{
+			sGroupContent += "\n"+osLine;
+		}
+
+
+    }
+     
+    CSLDestroy( papszLines );
 }
 
 void GeoEye::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const
@@ -98,25 +162,19 @@ void GeoEye::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringLi
 	if( CSLFindName(szrImageMetadata.List(), "Sensor") != -1)
 	{
 		CPLString osSatName = CSLFetchNameValue(szrImageMetadata.List(), "Sensor");
-		CPLString pszMD;
-		pszMD.Printf("%s=%s",MDName_SatelliteId.c_str(), osSatName.c_str());
-		szrCommonImageMetadata.AddString(pszMD.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), osSatName.c_str());
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "Percent Cloud Cover") != -1)
 	{
 		CPLString osCloudCover = CSLFetchNameValue(szrImageMetadata.List(), "Percent Cloud Cover");
-		CPLString pszMD;
-		pszMD.Printf("%s=%s",MDName_CloudCover.c_str(), osCloudCover.c_str());
-		szrCommonImageMetadata.AddString(pszMD.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), osCloudCover.c_str());
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "Acquisition Date/Time") != -1)
 	{
 		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Acquisition Date/Time");
-		CPLString pszMD;
-		pszMD.Printf("%s=%s",MDName_AcquisitionDateTime.c_str(), osAcqisitionTime.c_str());
-		szrCommonImageMetadata.AddString(pszMD.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTime.c_str());
 	}
 }
 

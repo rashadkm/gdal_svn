@@ -27,13 +27,48 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
-#ifndef _REMOTE_SENSING_METADATA_H_INCLUDED
-#define _REMOTE_SENSING_METADATA_H_INCLUDED
+#ifndef _READER_ORB_VIEW_H_INCLUDED
+#define _READER_ORB_VIEW_H_INCLUDED
 
 #include "cpl_string.h"
+#include "gdal_priv.h"
 
-const CPLString MDName_AcquisitionDateTime = "AcquisitionDateTime";
-const CPLString MDName_SatelliteId = "SatelliteId";
-const CPLString MDName_CloudCover = "CloudCover";
+#include "rsmd_reader.h"
 
-#endif /* _REMOTE_SENSING_METADATA_H_INCLUDED */
+/**
+@brief Metadata reader for OrbView
+
+TIFF filename:		aaaaaaaaa.tif
+Metadata filename:	aaaaaaaaa.pvl
+RPC filename:		aaaaaaaaa_rpc.txt
+
+Common metadata (from metadata filename):
+	MDName_SatelliteId:			sensorInfo.satelliteName
+	MDName_CloudCover:			productInfo.productCloudCoverPercentage
+	MDName_AcquisitionDateTime: inputImageInfo.firstLineAcquisitionDateTime
+*/
+class OrbView: public RSMDReader
+{
+public:
+	OrbView(const char* pszFilename);
+    
+	const bool IsFullCompliense() const;
+
+private:
+	CPLString osIMDSourceFilename;
+	CPLString osRPCSourceFilename;
+
+private:
+	const CPLStringList DefineSourceFiles() const;
+
+	void ReadImageMetadata(CPLStringList& szrImageMetadata) const;
+	void ReadImageMetadataFromWKT(CPLStringList& szrImageMetadata) const;
+
+	void GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const;
+
+	void ReadRPC(RSMDRPC& rRPC) const;
+	void ReadRPCFromWKT(RSMDRPC& rRPC) const;
+
+};
+
+#endif /* _READER_ORB_VIEW_H_INCLUDED */

@@ -27,13 +27,43 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
-#ifndef _REMOTE_SENSING_METADATA_H_INCLUDED
-#define _REMOTE_SENSING_METADATA_H_INCLUDED
+#ifndef _READER_FORMSAT_H_INCLUDED
+#define _READER_FORMSAT_H_INCLUDED
 
 #include "cpl_string.h"
+#include "gdal_priv.h"
 
-const CPLString MDName_AcquisitionDateTime = "AcquisitionDateTime";
-const CPLString MDName_SatelliteId = "SatelliteId";
-const CPLString MDName_CloudCover = "CloudCover";
+#include "rsmd_reader.h"
 
-#endif /* _REMOTE_SENSING_METADATA_H_INCLUDED */
+/**
+@brief Metadata reader for Formosat
+
+TIFF filename:		aaaaaaaaaa.tif
+Metadata filename:	METADATA.DIM
+RPC filename:		
+
+Common metadata (from metadata filename):
+	MDName_SatelliteId:			MISSION, MISSION_INDEX	
+	MDName_AcquisitionDateTime:	IMAGING_DATE, IMAGING_TIME
+*/
+class Formosat: public RSMDReader
+{
+public:
+	Formosat(const char* pszFilename);
+    
+	const bool IsFullCompliense() const;
+
+private:
+	CPLString osIMDSourceFilename;
+
+private:
+	const CPLStringList DefineSourceFiles() const;
+
+	void ReadImageMetadata(CPLStringList& szrImageMetadata) const;
+
+	void GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const;
+
+	void ReadRPC(RSMDRPC& rRPC) const;
+};
+
+#endif /* _READER_FORMSAT_H_INCLUDED */

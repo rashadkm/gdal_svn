@@ -27,13 +27,45 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
-#ifndef _REMOTE_SENSING_METADATA_H_INCLUDED
-#define _REMOTE_SENSING_METADATA_H_INCLUDED
+#ifndef _READER_ALOS_H_INCLUDED
+#define _READER_ALOS_H_INCLUDED
 
 #include "cpl_string.h"
+#include "gdal_priv.h"
 
-const CPLString MDName_AcquisitionDateTime = "AcquisitionDateTime";
-const CPLString MDName_SatelliteId = "SatelliteId";
-const CPLString MDName_CloudCover = "CloudCover";
+#include "rsmd_reader.h"
 
-#endif /* _REMOTE_SENSING_METADATA_H_INCLUDED */
+/**
+Metadata reader for ALOS
+
+TIFF filename:		IMG-sssssssssssssss-pppppppp.tif
+Metadata filename:	summary.txt
+RPC filename:		RPC-sssssssssssssss-pppppppp.txt
+
+Common metadata (from metadata filename):
+	MDName_AcquisitionDateTime:	Img_SceneCenterDateTime or Lbi_ObservationDate
+	MDName_SatelliteId:			Lbi_Satellite
+	MDName_CloudCover:			Img_CloudQuantityOfAllImage
+*/
+class ALOS: public RSMDReader
+{
+public:
+	ALOS(const char* pszFilename);
+    
+	const bool IsFullCompliense() const;
+
+private:
+	CPLString osIMDSourceFilename;
+	CPLString osRPCSourceFilename;
+
+private:
+	const CPLStringList DefineSourceFiles() const;
+
+	void ReadImageMetadata(CPLStringList& szrImageMetadata) const;
+
+	void GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const;
+
+	void ReadRPC(RSMDRPC& rRPC) const;
+};
+
+#endif /* _READER_ALOS_H_INCLUDED */

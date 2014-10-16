@@ -1,3 +1,32 @@
+/******************************************************************************
+ * $Id$
+ *
+ * Project:  RSMDReader - Remote Sensing MetaData Reader
+ * Purpose:  Read remote sensing metadata from files from different providers like as DigitalGlobe, GeoEye et al.
+ * Author:   Alexander Lisovenko
+ *
+ ******************************************************************************
+ * Copyright (c) 2014 NextGIS <info@nextgis.ru>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ ****************************************************************************/
+
 #include <sstream>
 #include "cplkeywordparser.h"
 
@@ -40,16 +69,15 @@ void RDK1::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 		{
 			return;
 		}
-			
-		ReadXML(psRootNode, szrBadXMLMetadata);
+		
+		CPLStringList expulsionNodeNames;
+		ReadXMLToStringList(psRootNode, szrBadXMLMetadata, expulsionNodeNames);
 	}
 
 	for(int i = 0; i < szrBadXMLMetadata.size(); i++)
 	{
 		char *ppszRootKey = NULL;				
 		const char* value = CPLParseNameValue(szrBadXMLMetadata[i], &ppszRootKey);
-
-		//printf(">>> ppszRootKey: %s\n", ppszRootKey);
 		
 		std::stringstream ss(value);
 
@@ -61,8 +89,6 @@ void RDK1::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 			
 			if(osLine.empty())
 				continue;
-
-			//printf(">>> osLine: %s\n", osLine.c_str());
 
 			char *ppszKey = NULL;	
 
@@ -90,8 +116,7 @@ void RDK1::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList
 	if( CSLFindName(szrImageMetadata.List(), "MSP_ROOT.cCodeKA") != -1)
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "MSP_ROOT.cCodeKA");
-		CPLString pszMD = MDName_SatelliteId + "=" + SatelliteIdValue;
-		szrCommonImageMetadata.AddString(pszMD.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "Acquisition.dDateRoute") != -1 &&
@@ -99,9 +124,8 @@ void RDK1::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList
 	{
 		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Acquisition.tTimeRoutePlan");
 		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "Acquisition.dDateRoute");
-		
-		CPLString pszMD = MDName_AcquisitionDateTime + "=" + osAcqisitionDate + " " + osAcqisitionTime;
-		szrCommonImageMetadata.AddString(pszMD.c_str());
+		CPLString AcqisitionDateTime = osAcqisitionDate + " " + osAcqisitionTime;
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), AcqisitionDateTime.c_str());
 	}
 }
 
@@ -134,7 +158,7 @@ bool RDK1::IsIMDValid(const CPLString& psFilename) const
 		if(psNode == NULL)
 			return false;
 			
-		if( strstr(psNode->pszValue, "MSP_ROOT") != NULL)
+		if( EQUAL(psNode->pszValue, "MSP_ROOT") )
 			return true;
 	}
 	return false;
