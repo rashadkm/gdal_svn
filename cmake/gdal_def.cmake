@@ -98,6 +98,46 @@
 #cmakedefine GDAL_ENABLE_FRMT_L1B
 #cmakedefine GDAL_ENABLE_FRMT_NGSGEOID
 #cmakedefine GDAL_ENABLE_FRMT_NITF
+#cmakedefine GDAL_ENABLE_FRMT_ISO8211
+#cmakedefine GDAL_ENABLE_FRMT_SAGA
+#cmakedefine GDAL_ENABLE_FRMT_JP2OpenJPEG
+#cmakedefine GDAL_ENABLE_FRMT_ELAS
+#cmakedefine GDAL_ENABLE_FRMT_CEOS
+#cmakedefine GDAL_ENABLE_FRMT_CEOS2
+#cmakedefine GDAL_ENABLE_FRMT_JAXAPALSAR
+#cmakedefine GDAL_ENABLE_FRMT_GFF
+#cmakedefine GDAL_ENABLE_FRMT_GFF
+#cmakedefine GDAL_ENABLE_FRMT_BSB
+#cmakedefine GDAL_ENABLE_FRMT_DTED
+#cmakedefine GDAL_ENABLE_FRMT_ENVISAT
+#cmakedefine GDAL_ENABLE_FRMT_ERS
+#cmakedefine GDAL_ENABLE_FRMT_SDTS
+#cmakedefine GDAL_ENABLE_FRMT_XPM
+#cmakedefine GDAL_ENABLE_FRMT_AIRSAR
+#cmakedefine GDAL_ENABLE_FRMT_RS2
+#cmakedefine GDAL_ENABLE_FRMT_ILWIS
+#cmakedefine GDAL_ENABLE_FRMT_SGI
+#cmakedefine GDAL_ENABLE_FRMT_SRTMHGT
+#cmakedefine GDAL_ENABLE_FRMT_LEVELLER
+#cmakedefine GDAL_ENABLE_FRMT_TERRAGEN
+#cmakedefine GDAL_ENABLE_FRMT_FIT
+#cmakedefine GDAL_ENABLE_FRMT_RMF
+#cmakedefine GDAL_ENABLE_FRMT_GSG
+#cmakedefine GDAL_ENABLE_FRMT_COSAR
+#cmakedefine GDAL_ENABLE_FRMT_TSX
+#cmakedefine GDAL_ENABLE_FRMT_COASP
+#cmakedefine GDAL_ENABLE_FRMT_R
+#cmakedefine GDAL_ENABLE_FRMT_USGSDEM
+#cmakedefine GDAL_ENABLE_FRMT_GXF
+#cmakedefine GDAL_ENABLE_FRMT_NORTHWOOD
+#cmakedefine GDAL_ENABLE_FRMT_ADRG
+#cmakedefine GDAL_ENABLE_FRMT_BLX
+#cmakedefine GDAL_ENABLE_FRMT_XYZ
+#cmakedefine GDAL_ENABLE_FRMT_HF2
+#cmakedefine GDAL_ENABLE_FRMT_CTG
+#cmakedefine GDAL_ENABLE_FRMT_ZMAP
+#cmakedefine GDAL_ENABLE_FRMT_IRIS
+
 
 /*** VECTOR FORMATS ***/
 #cmakedefine OGR_ENABLE_MITAB
@@ -122,4 +162,11 @@
 #cmakedefine OGR_ENABLE_XLSX
 #cmakedefine OGR_ENABLE_ODS
 #cmakedefine OGR_ENABLE_AVC
+#cmakedefine OGR_ENABLE_GME
+#cmakedefine OGR_ENABLE_GMT
+#cmakedefine OGR_ENABLE_GPSTrackMaker
+#cmakedefine OGR_ENABLE_HTF
+#cmakedefine OGR_ENABLE_DGN
+#cmakedefine OGR_ENABLE_PGDump
+
 

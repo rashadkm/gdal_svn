@@ -29,6 +29,8 @@ cmake_minimum_required (VERSION 2.8.10)
 set(LIB_NAME "frmts_ceos2")
 project ("lib${LIB_NAME}")
 
+include_directories(${GDAL_ROOT_SOURCE_DIR}/frmts/raw)
+
 set(HHEADERS
     ceos.h
 )

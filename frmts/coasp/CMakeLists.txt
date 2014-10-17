@@ -1,11 +1,10 @@
 # ******************************************************************************
 # * Project:  CMake4GDAL
 # * Purpose:  CMake build scripts
-# * Author:   Alexander Lisovenko, alexander.lisovenko@gmail.com
+# * Author: Carl Simonson <simonsonc@gmail.com>
 # ******************************************************************************
-# * Copyright (C) 2014 Alexander Lisovenko
-# * Copyright (C) 2014 NextGIS
-# * 
+# * Copyright (C) 2014 Carl Simonson
+# *
 # * Permission is hereby granted, free of charge, to any person obtaining a
 # * copy of this software and associated documentation files (the "Software"),
 # * to deal in the Software without restriction, including without limitation
@@ -27,21 +26,17 @@
 
 cmake_minimum_required (VERSION 2.8.10)
 
-set(LIB_NAME "frmts_aigrid")
+set(LIB_NAME "frmts_coasp")
 project ("lib${LIB_NAME}")
 
-include_directories(${GDAL_ROOT_SOURCE_DIR}/ogr/ogrsf_frmts/avc)
-
-set(LIB_HHEADERS ${LIB_INST_HEADERS}
-    aigrid.h
+set(HHEADERS
 )
 
 set(LIB_CSOURCES
-	aigdataset.cpp
-    gridlib.c
-    aigopen.c
-    aigccitt.c
+    coasp_dataset.cpp
 )
 
 set(GDAL_TARGET_OBJECTS ${GDAL_TARGET_OBJECTS} $<TARGET_OBJECTS:${LIB_NAME}> PARENT_SCOPE)
-add_library(${LIB_NAME} OBJECT ${LIB_HHEADERS} ${LIB_CSOURCES})	
+add_library(${LIB_NAME} OBJECT ${LIB_CSOURCES})
+
+set(GDAL_TARGET_LINK_LIB ${GDAL_TARGET_LINK_LIB} PARENT_SCOPE)
