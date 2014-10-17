@@ -29,6 +29,8 @@ cmake_minimum_required (VERSION 2.8.10)
 set(LIB_NAME "rsmdreader")
 project ("lib${LIB_NAME}")
 
+include_directories(${GDAL_ROOT_SOURCE_DIR}/gcore)
+
 set(LIB_HHEADERS
     utils.h
     remote_sensing_metadata.h

@@ -46,6 +46,28 @@ RSMDReader* GetRSMDReader(const char* pszFilename, RSMDProvider rsdProvider)
 {
 	if(rsdProvider == RSMD_DigitalGlobe)
 		return new DigitalGlobe(pszFilename);
+    else if(rsdProvider == RSMD_OrbView)
+        return new OrbView(pszFilename);
+    else if(rsdProvider == RSMD_Pleiades)
+        return new Pleiades(pszFilename);
+    else if(rsdProvider == RSMD_GeoEye)
+        return new GeoEye(pszFilename);
+    else if(rsdProvider == RSMD_Kompsat)
+        return new Kompsat(pszFilename);
+    else if(rsdProvider == RSMD_RDK1)
+        return new RDK1(pszFilename);
+    else if(rsdProvider == RSMD_Spot)
+        return new Spot(pszFilename);
+    else if(rsdProvider == RSMD_ALOS)
+        return new ALOS(pszFilename);
+    else if(rsdProvider == RSMD_EROS)
+        return new EROS(pszFilename);
+    else if(rsdProvider == RSMD_Formosat)
+        return new Formosat(pszFilename);
+    else if(rsdProvider == RSMD_Landsat)
+        return new Landsat(pszFilename);
+    else if(rsdProvider == RSMD_RapidEye)
+        return new RapidEye(pszFilename);
 
 	return NULL;
 };

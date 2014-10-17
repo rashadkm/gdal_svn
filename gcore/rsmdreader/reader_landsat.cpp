@@ -101,6 +101,34 @@ namespace
 
 		return 0;
 	}
+
+	const time_t GetAcqisitionTimeFromString(const CPLString& rsAcqisitionTime, CPLString& rsAcqisitionTimeFormatted)
+	{
+		size_t iYear;
+		size_t iMonth;
+		size_t iDay;
+		size_t iHours;
+		size_t iMin;
+		size_t iSec;
+		
+		int r = sscanf ( rsAcqisitionTime.c_str(), "%d-%d-%d %d:%d:%d.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+		if (r != 6)
+			return -1;
+		
+		tm tmDateTime;
+		tmDateTime.tm_sec = iSec;
+		tmDateTime.tm_min = iMin;
+		tmDateTime.tm_hour = iHours;
+		tmDateTime.tm_mday = iDay;
+		tmDateTime.tm_mon = iMonth - 1;
+		tmDateTime.tm_year = iYear - 1900;
+
+		char buffer [80];
+		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		rsAcqisitionTimeFormatted.assign(&buffer[0]);
+
+		return mktime(&tmDateTime);
+	}
 }
 
 Landsat::Landsat(const char* pszFilename)
@@ -143,29 +171,33 @@ void Landsat::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringL
 	if( CSLFindName(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.SPACECRAFT_ID") != -1 )
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.SPACECRAFT_ID");
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), CPLStripQuotes(SatelliteIdValue).c_str());
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "L1_METADATA_FILE.IMAGE_ATTRIBUTES.CLOUD_COVER") != -1 )
 	{
 		CPLString CloudCover = CSLFetchNameValue(szrImageMetadata.List(), "L1_METADATA_FILE.IMAGE_ATTRIBUTES.CLOUD_COVER");
-		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), CloudCover.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), CPLStripQuotes(CloudCover).c_str());
 	}
 	
 	if( CSLFindName(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.ACQUISITION_DATE") != -1 &&
 			CSLFindName(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.SCENE_CENTER_SCAN_TIME") != -1)
 	{
-		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.ACQUISITION_DATE");
-		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.SCENE_CENTER_SCAN_TIME");
-		CPLString AcqisitionDateTime = osAcqisitionDate + " " + osAcqisitionTime;
+		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.SCENE_CENTER_SCAN_TIME");
+		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.ACQUISITION_DATE");
+		
+		CPLString AcqisitionDateTime;
+		GetAcqisitionTimeFromString(CPLStripQuotes(osAcqisitionDate) + " " + CPLStripQuotes(osAcqisitionTime), AcqisitionDateTime);
 		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), AcqisitionDateTime.c_str());
 	}
 	else if( CSLFindName(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.DATE_ACQUIRED") != -1 &&
 			CSLFindName(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.SCENE_CENTER_TIME") != -1)
 	{
-		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.DATE_ACQUIRED");
-		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.SCENE_CENTER_TIME");
-		CPLString AcqisitionDateTime = osAcqisitionDate + " " + osAcqisitionTime;
+		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.SCENE_CENTER_TIME");
+		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.DATE_ACQUIRED");
+		
+		CPLString AcqisitionDateTime;
+		GetAcqisitionTimeFromString(CPLStripQuotes(osAcqisitionDate) + " " + CPLStripQuotes(osAcqisitionTime), AcqisitionDateTime);
 		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), AcqisitionDateTime.c_str());
 	}
 }

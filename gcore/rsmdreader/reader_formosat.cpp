@@ -34,6 +34,38 @@
 #include "remote_sensing_metadata.h"
 #include "utils.h"
 
+namespace
+{
+	const time_t GetAcqisitionTimeFromString(const CPLString& rsAcqisitionTime, CPLString& rsAcqisitionTimeFormatted)
+	{
+		size_t iYear;
+		size_t iMonth;
+		size_t iDay;
+		size_t iHours = 0;
+		size_t iMin = 0;
+		size_t iSec = 0;
+
+		int r = sscanf ( rsAcqisitionTime.c_str(), "%d-%d-%d %d:%d:%d.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+
+		if (r != 6)
+			return -1;
+		
+		tm tmDateTime;
+		tmDateTime.tm_sec = iSec;
+		tmDateTime.tm_min = iMin;
+		tmDateTime.tm_hour = iHours;
+		tmDateTime.tm_mday = iDay;
+		tmDateTime.tm_mon = iMonth - 1;
+		tmDateTime.tm_year = iYear - 1900;
+
+		char buffer [80];
+		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		rsAcqisitionTimeFormatted.assign(&buffer[0]);
+
+		return mktime(&tmDateTime);
+	}
+}
+
 Formosat::Formosat(const char* pszFilename)
 	:RSMDReader(pszFilename, "Formosat")
 {
@@ -113,7 +145,8 @@ void Formosat::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLString
 	{
 		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Information.Scene_Source.IMAGING_TIME");
 		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Information.Scene_Source.IMAGING_DATE");
-		CPLString AcqisitionDateTime = osAcqisitionDate + " " + osAcqisitionTime;
+		CPLString AcqisitionDateTime;
+		GetAcqisitionTimeFromString(osAcqisitionDate + " " + osAcqisitionTime, AcqisitionDateTime);
 
 		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), AcqisitionDateTime.c_str());
 	}

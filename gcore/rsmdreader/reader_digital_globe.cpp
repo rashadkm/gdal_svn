@@ -34,6 +34,54 @@
 #include "remote_sensing_metadata.h"
 #include "utils.h"
 
+namespace
+{
+	const time_t GetAcqisitionTimeFromString(const CPLString& rsAcqisitionTime, CPLString& rsAcqisitionTimeFormatted)
+	{
+		size_t iYear;
+		size_t iMonth;
+		size_t iDay;
+		size_t iHours;
+		size_t iMin;
+		size_t iSec;
+
+		int r = sscanf ( rsAcqisitionTime.c_str(), "%d-%d-%dT%d:%d:%d.%*dZ", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+
+		if (r != 6)
+			return -1;
+		
+		tm tmDateTime;
+		tmDateTime.tm_sec = iSec;
+		tmDateTime.tm_min = iMin;
+		tmDateTime.tm_hour = iHours;
+		tmDateTime.tm_mday = iDay;
+		tmDateTime.tm_mon = iMonth - 1;
+		tmDateTime.tm_year = iYear - 1900;
+
+		char buffer [80];
+		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		rsAcqisitionTimeFormatted.assign(&buffer[0]);
+
+		return mktime(&tmDateTime);
+	}
+
+	bool GetAcqisitionMidTime(const CPLString& rsAcqisitionStartTime, const CPLString& rsAcqisitionEndTime, CPLString& osAcqisitionTime)
+	{
+		CPLString sTimeStart;
+		CPLString sTimeEnd;
+		time_t timeStart = GetAcqisitionTimeFromString(rsAcqisitionStartTime, sTimeStart);
+		time_t timeEnd = GetAcqisitionTimeFromString(rsAcqisitionEndTime, sTimeEnd);
+
+		time_t timeMid = timeStart + (timeEnd - timeStart)/2;
+
+		char buffer [80];
+		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(), localtime(&timeMid));
+		osAcqisitionTime.assign(&buffer[0]);
+
+		return true;
+	}
+}
+
 DigitalGlobe::DigitalGlobe(const char* pszFilename)
 	:RSMDReader(pszFilename, "DigitalGlobe")
 {
@@ -113,22 +161,22 @@ void DigitalGlobe::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLSt
 	if( CSLFindName(szrImageMetadata.List(), "IMAGE.SATID") != -1)
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "IMAGE.SATID");
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId, CPLStripQuotes(SatelliteIdValue));
 	}
 	if( CSLFindName(szrImageMetadata.List(), "IMAGE_1.SATID") != -1)
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "IMAGE_1.SATID");
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId, CPLStripQuotes(SatelliteIdValue));
 	}
 	if( CSLFindName(szrImageMetadata.List(), "IMAGE_1.cloudCover") != -1)
 	{
 		CPLString osCloudCoverValue = CSLFetchNameValue(szrImageMetadata.List(), "IMAGE_1.cloudCover");
-		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), osCloudCoverValue.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_CloudCover, CPLStripQuotes(osCloudCoverValue));
 	}
 	if( CSLFindName(szrImageMetadata.List(), "IMAGE.CLOUDCOVER") != -1)
 	{
 		CPLString osCloudCoverValue = CSLFetchNameValue(szrImageMetadata.List(), "IMAGE.CLOUDCOVER");
-		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), osCloudCoverValue.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_CloudCover, CPLStripQuotes(osCloudCoverValue));
 	}
 	
 	if( CSLFindName(szrImageMetadata.List(), "MAP_PROJECTED_PRODUCT.earliestAcqTime") != -1 &&
@@ -138,10 +186,10 @@ void DigitalGlobe::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLSt
 		CPLString osTimeEnd = CSLFetchNameValue(szrImageMetadata.List(), "MAP_PROJECTED_PRODUCT.latestAcqTime");
 		CPLString osAcqisitionTime;
 		
-		if(GetAcqisitionTime(osTimeStart, osTimeEnd, CPLString("%d-%d-%dT%d:%d:%d.%*dZ"), osAcqisitionTime))
-			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTime.c_str());
+		if(GetAcqisitionMidTime(osTimeStart, osTimeEnd, osAcqisitionTime))
+			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, osAcqisitionTime);
 		else
-			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), "unknown");
+			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, "unknown");
 	}
 }
 

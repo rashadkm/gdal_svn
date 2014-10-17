@@ -27,13 +27,22 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
-#ifndef _REMOTE_SENSING_METADATA_H_INCLUDED
-#define _REMOTE_SENSING_METADATA_H_INCLUDED
+#ifndef _CPLXML_UTILS_H_INCLUDED
+#define _CPLXML_UTILS_H_INCLUDED
+
+#include "cpl_minixml.h"
 
 #include "cpl_string.h"
 
-const CPLString MDName_AcquisitionDateTime = "AcquisitionDateTime";
-const CPLString MDName_SatelliteId = "SatelliteId";
-const CPLString MDName_CloudCover = "CloudCover";
+const char* GetCPLXMLNodeTextValue(const CPLXMLNode* psNode);
 
-#endif /* _REMOTE_SENSING_METADATA_H_INCLUDED */
+void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues, const CPLString& osRootNodeName, const CPLStringList& expulsionNodeNames);
+void ReadXMLToStringList(CPLXMLNode* psNode, const CPLStringList& expulsionNodeNames, CPLStringList& szlValues);
+
+const char *CPLGoodParseNameValue(const char *pszNameValue, char **ppszKey, const char separator);
+
+bool GetAcqisitionTime(const CPLString& rsAcqisitionStartTime, const CPLString& rsAcqisitionEndTime, const CPLString& osDateTimeTemplate, CPLString& osAcqisitionTime);
+
+CPLString CPLStrip(const CPLString& sString, const char cChar);
+CPLString CPLStripQuotes(const CPLString& sString);
+#endif /* _CPLXML_UTILS_H_INCLUDED */

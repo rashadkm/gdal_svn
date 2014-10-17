@@ -47,6 +47,17 @@ End use it!
 typedef enum
 {
 	RSMD_DigitalGlobe = 1,
+	RSMD_OrbView,
+    RSMD_Pleiades,
+    RSMD_GeoEye,
+    RSMD_Kompsat,
+    RSMD_RDK1,
+    RSMD_Spot,
+    RSMD_ALOS,
+    RSMD_EROS,
+    RSMD_Formosat,
+    RSMD_Landsat,
+    RSMD_RapidEye
 
 } RSMDProvider;
 

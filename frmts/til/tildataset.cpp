@@ -36,6 +36,8 @@
 #include "cpl_multiproc.h"
 #include "cplkeywordparser.h"
 
+#include "rsmd_reader.h"
+
 CPL_CVSID("$Id$");
 
 /************************************************************************/
@@ -49,9 +51,10 @@ class CPL_DLL TILDataset : public GDALPamDataset
     VRTDataset *poVRTDS;
     std::vector<GDALDataset *> apoTileDS;
 
-    CPLString                  osRPBFilename;
-    CPLString                  osIMDFilename;
-
+    //CPLString                  osRPBFilename;
+    //CPLString                  osIMDFilename;
+	
+	RSMDReader *pRSMDReader;
   protected:
     virtual int         CloseDependentDatasets();
 
@@ -161,6 +164,7 @@ TILDataset::TILDataset()
 TILDataset::~TILDataset()
 
 {
+	delete pRSMDReader;
     CloseDependentDatasets();
 }
 
@@ -227,17 +231,16 @@ GDALDataset *TILDataset::Open( GDALOpenInfo * poOpenInfo )
     }
     
     CPLString osDirname = CPLGetDirname(poOpenInfo->pszFilename);
-
+	
+	RSMDReader* pRSMDReader = GetRSMDReader(poOpenInfo->pszFilename);
+	const std::map<CPLString, CPLStringList>* pmMetadata = pRSMDReader->GetMetadata();
+	
 /* -------------------------------------------------------------------- */
 /*      Try to find the corresponding .IMD file.                        */
 /* -------------------------------------------------------------------- */
-    char **papszIMD = NULL;
-    CPLString osIMDFilename = 
-        GDALFindAssociatedFile( poOpenInfo->pszFilename, "IMD", 
-                                poOpenInfo->GetSiblingFiles(), 0 );
+	CPLStringList slIMD = pmMetadata->find(MDPrefix_IMD)->second;
 
-    if( osIMDFilename != "" )
-        papszIMD = GDALLoadIMDFile( osIMDFilename, NULL );
+    char **papszIMD = slIMD.List();
 
     if( papszIMD == NULL )
     {
@@ -287,10 +290,13 @@ GDALDataset *TILDataset::Open( GDALOpenInfo * poOpenInfo )
 
     poDS = new TILDataset();
 
-    poDS->osIMDFilename = osIMDFilename; 
+    //poDS->osIMDFilename = osIMDFilename; 
     poDS->SetMetadata( papszIMD, "IMD" );
     poDS->nRasterXSize = atoi(CSLFetchNameValueDef(papszIMD,"numColumns","0"));
     poDS->nRasterYSize = atoi(CSLFetchNameValueDef(papszIMD,"numRows","0"));
+
+	poDS->pRSMDReader = pRSMDReader;
+	
     if (!GDALCheckDatasetDimensions(poDS->nRasterXSize, poDS->nRasterYSize))
     {
         delete poDS;
@@ -440,27 +446,25 @@ GDALDataset *TILDataset::Open( GDALOpenInfo * poOpenInfo )
     }
 
 /* -------------------------------------------------------------------- */
-/*      Set RPC and IMD metadata.                                       */
+/*      Set RPC and Commom IMD metadata.                                       */
 /* -------------------------------------------------------------------- */
-    poDS->osRPBFilename = 
-        GDALFindAssociatedFile( poOpenInfo->pszFilename, "RPB", 
-                                poOpenInfo->GetSiblingFiles(), 0 );
-    if( poDS->osRPBFilename != "" )
-    {
-        char **papszRPCMD = GDALLoadRPBFile( poOpenInfo->pszFilename,
-                                             poOpenInfo->GetSiblingFiles() );
-        
-        if( papszRPCMD != NULL )
-        {
-            poDS->SetMetadata( papszRPCMD, "RPC" );
-            CSLDestroy( papszRPCMD );
-        }
-    }
+	CPLStringList slRPCMD = pmMetadata->find(MDPrefix_RPC)->second;
+	if( slRPCMD.size() != 0 )
+	{
+		poDS->SetMetadata( slRPCMD.List(), "RPC" );
+	}
 
+
+	CPLStringList slCommonIMD = pmMetadata->find(MDPrefix_Common_IMD)->second;
+	if( slCommonIMD.size() != 0 )
+	{
+		poDS->SetMetadata( slCommonIMD.List(), "IMAGERY" );
+	}
 /* -------------------------------------------------------------------- */
 /*      Cleanup                                                         */
 /* -------------------------------------------------------------------- */
     CSLDestroy( papszIMD );
+	delete pmMetadata; 
 
 /* -------------------------------------------------------------------- */
 /*      Initialize any PAM information.                                 */
@@ -490,12 +494,16 @@ char **TILDataset::GetFileList()
         papszFileList = CSLAddString( papszFileList,
                                       apoTileDS[i]->GetDescription() );
     
+	CPLStringList slMDSources = pRSMDReader->GetSourceFileList();
+	for(int i = 0; i < slMDSources.size(); i++)
+		papszFileList = CSLAddString( papszFileList, slMDSources[i] );
+	/*
     papszFileList = CSLAddString( papszFileList, osIMDFilename );
 
 
     if( osRPBFilename != "" )
         papszFileList = CSLAddString( papszFileList, osRPBFilename );
-
+	*/
     return papszFileList;
 }
 

@@ -51,9 +51,11 @@ GeoEye::GeoEye(const char* pszFilename)
 
 
 	osIMDSourceFilename = "";
-	VSIFilesystemHandler *poFSHandler = VSIFileManager::GetHandler( pszFilename );
-	char **papszFiles = NULL;
-	papszFiles = poFSHandler->ReadDir("./");
+	
+	char **papszFiles = CPLReadDir(CPLGetPath(pszFilename));
+    if(papszFiles == NULL)
+        return;
+
 	for( int i = 0; papszFiles[i] != NULL; i++ )
     {
 		CPLString osFileName(papszFiles[i]);

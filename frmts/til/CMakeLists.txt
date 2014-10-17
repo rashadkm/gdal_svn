@@ -30,6 +30,7 @@ set(LIB_NAME "frmts_til")
 project ("lib${LIB_NAME}")
 
 include_directories(${GDAL_ROOT_SOURCE_DIR}/frmts/vrt)
+include_directories(${GDAL_ROOT_SOURCE_DIR}/gcore/rsmdreader)
 
 set(LIB_CSOURCES
 	tildataset.cpp

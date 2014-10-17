@@ -59,6 +59,34 @@ namespace
         
 		return 0;
 	}
+
+	const time_t GetAcqisitionTimeFromString(const CPLString& rsAcqisitionTime, CPLString& rsAcqisitionTimeFormatted)
+	{
+		size_t iYear;
+		size_t iMonth;
+		size_t iDay;
+		size_t iHours;
+		size_t iMin;
+		size_t iSec;
+
+		int r = sscanf ( rsAcqisitionTime.c_str(), "%d-%d-%dT%d:%d:%d.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+		if (r != 6)
+			return -1;
+		
+		tm tmDateTime;
+		tmDateTime.tm_sec = iSec;
+		tmDateTime.tm_min = iMin;
+		tmDateTime.tm_hour = iHours;
+		tmDateTime.tm_mday = iDay;
+		tmDateTime.tm_mon = iMonth - 1;
+		tmDateTime.tm_year = iYear - 1900;
+
+		char buffer [80];
+		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		rsAcqisitionTimeFormatted.assign(&buffer[0]);
+
+		return mktime(&tmDateTime);
+	}
 }
 
 OrbView::OrbView(const char* pszFilename)
@@ -135,18 +163,19 @@ void OrbView::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringL
 	if( CSLFindName(szrImageMetadata.List(), "sensorInfo.satelliteName") != -1 )
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "sensorInfo.satelliteName");
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue);
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), CPLStripQuotes(SatelliteIdValue));
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "productInfo.productCloudCoverPercentage") != -1 )
 	{
 		CPLString osCloudCoverValue = CSLFetchNameValue(szrImageMetadata.List(), "productInfo.productCloudCoverPercentage");
-		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), osCloudCoverValue);
+		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), CPLStripQuotes(osCloudCoverValue));
 	}
 	
 	if( CSLFindName(szrImageMetadata.List(), "inputImageInfo.firstLineAcquisitionDateTime") != -1 )
 	{
-		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "inputImageInfo.firstLineAcquisitionDateTime");
+		CPLString osAcqisitionTime;
+		GetAcqisitionTimeFromString(CSLFetchNameValue(szrImageMetadata.List(), "inputImageInfo.firstLineAcquisitionDateTime"), osAcqisitionTime);
 		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTime);
 	}
 }

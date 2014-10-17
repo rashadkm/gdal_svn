@@ -30,6 +30,8 @@
 #ifndef _READER_ABSTRACT_H_INCLUDED
 #define _READER_ABSTRACT_H_INCLUDED
 
+#include <map>
+
 #include "remote_sensing_metadata.h"
 
 #include "cpl_string.h"
@@ -74,16 +76,19 @@ public:
 /**
 @brief Return list of metadata
 */
-	const CPLStringList GetMetadata() const
+	//const CPLStringList GetMetadata() const
+	const std::map<CPLString, CPLStringList>* GetMetadata() const
 	{
-		CPLStringList szMetadata;
+		std::map<CPLString, CPLStringList>* pmMetadata = new std::map<CPLString, CPLStringList>();
+		//CPLStringList szMetadata;
 		
 		CPLStringList szImageMetadata;
 		ReadImageMetadata(szImageMetadata);
-		for(int i = 0; i < szImageMetadata.size(); ++i)
-		{
-			szMetadata.AddString(CPLString().Printf("%s.%s",MDPrefix_IMD.c_str(), szImageMetadata[i]).c_str());
-		}
+		//for(int i = 0; i < szImageMetadata.size(); ++i)
+		//{
+		//	szMetadata.AddString(CPLString().Printf("%s.%s",MDPrefix_IMD.c_str(), szImageMetadata[i]).c_str());
+		//}
+		(*pmMetadata)[MDPrefix_IMD] = szImageMetadata;
 
 		CPLStringList szCommonImageMetadata;
 		GetCommonImageMetadata(szImageMetadata, szCommonImageMetadata);
@@ -91,42 +96,47 @@ public:
 		{
 			szCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), "0");
 		}
-		for(int i = 0; i < szCommonImageMetadata.size(); ++i)
-		{
-			szMetadata.AddString(CPLString().Printf("%s.%s",MDPrefix_Common_IMD.c_str(), szCommonImageMetadata[i]).c_str());
-		}
-
+		//for(int i = 0; i < szCommonImageMetadata.size(); ++i)
+		//{
+		//	szMetadata.AddString(CPLString().Printf("%s.%s",MDPrefix_Common_IMD.c_str(), szCommonImageMetadata[i]).c_str());
+		//}
+		(*pmMetadata)[MDPrefix_Common_IMD] = szCommonImageMetadata;
+			
 		RSMDRPC szRPC;
 		ReadRPC(szRPC);
+		CPLStringList szRPCMetadata;
 		if( !szRPC.lineOffset.empty() )
-			szMetadata.AddString(CPLString().Printf("%s.LINE_OFF=%s",MDPrefix_RPC.c_str(), szRPC.lineOffset.c_str()).c_str());
+			szRPCMetadata.AddNameValue("LINE_OFF", szRPC.lineOffset.c_str());
 		if( !szRPC.sampOffset.empty() )
-			szMetadata.AddString(CPLString().Printf("%s.SAMP_OFF=%s",MDPrefix_RPC.c_str(), szRPC.sampOffset.c_str()).c_str());
+			szRPCMetadata.AddNameValue("SAMP_OFF", szRPC.sampOffset.c_str());
 		if( !szRPC.latOffset.empty() )
-			szMetadata.AddString(CPLString().Printf("%s.LAT_OFF=%s",MDPrefix_RPC.c_str(), szRPC.latOffset.c_str()).c_str());
+			szRPCMetadata.AddNameValue("LAT_OFF", szRPC.latOffset.c_str());
 		if( !szRPC.longOffset.empty() )
-			szMetadata.AddString(CPLString().Printf("%s.LONG_OFF=%s",MDPrefix_RPC.c_str(), szRPC.longOffset.c_str()).c_str());
+			szRPCMetadata.AddNameValue("LONG_OFF", szRPC.longOffset.c_str());
 		if( !szRPC.heightOffset.empty() )
-			szMetadata.AddString(CPLString().Printf("%s.HEIGHT_OFF=%s",MDPrefix_RPC.c_str(), szRPC.heightOffset.c_str()).c_str());
+			szRPCMetadata.AddNameValue("HEIGHT_OFF", szRPC.heightOffset.c_str());
 		if( !szRPC.lineScale.empty() )
-			szMetadata.AddString(CPLString().Printf("%s.LINE_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.lineScale.c_str()).c_str());
+			szRPCMetadata.AddNameValue("LINE_SCALE", szRPC.lineScale.c_str());
 		if( !szRPC.sampScale.empty() )
-			szMetadata.AddString(CPLString().Printf("%s.SAMP_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.sampScale.c_str()).c_str());
+			szRPCMetadata.AddNameValue("SAMP_SCALE", szRPC.sampScale.c_str());
 		if( !szRPC.latScale.empty() )
-			szMetadata.AddString(CPLString().Printf("%s.LAT_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.latScale.c_str()).c_str());
+			szRPCMetadata.AddNameValue("LAT_SCALE", szRPC.latScale.c_str());
 		if( !szRPC.longScale.empty() )
-			szMetadata.AddString(CPLString().Printf("%s.LONG_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.longScale.c_str()).c_str());
+			szRPCMetadata.AddNameValue("LONG_SCALE", szRPC.longScale.c_str());
 		if( !szRPC.heightScale.empty() )
-			szMetadata.AddString(CPLString().Printf("%s.HEIGHT_SCALE=%s",MDPrefix_RPC.c_str(), szRPC.heightScale.c_str()).c_str());
+			szRPCMetadata.AddNameValue("HEIGHT_SCALE", szRPC.heightScale.c_str());
 		if( !szRPC.lineNumCoef.empty() )
-			szMetadata.AddString(CPLString().Printf("%s.LINE_NUM_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.lineNumCoef.c_str()).c_str());
+			szRPCMetadata.AddNameValue("LINE_NUM_COEFF", szRPC.lineNumCoef.c_str());
 		if( !szRPC.lineDenCoef.empty() )
-			szMetadata.AddString(CPLString().Printf("%s.LINE_DEN_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.lineDenCoef.c_str()).c_str());
+			szRPCMetadata.AddNameValue("LINE_DEN_COEFF", szRPC.lineDenCoef.c_str());
 		if( !szRPC.sampNumCoef.empty() )
-			szMetadata.AddString(CPLString().Printf("%s.SAMP_NUM_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.sampNumCoef.c_str()).c_str());
+			szRPCMetadata.AddNameValue("SAMP_NUM_COEFF", szRPC.sampNumCoef.c_str());
 		if( !szRPC.sampDenCoef.empty() )
-			szMetadata.AddString(CPLString().Printf("%s.SAMP_DEN_COEFF=%s",MDPrefix_RPC.c_str(), szRPC.sampDenCoef.c_str()).c_str());
-		return szMetadata;
+			szRPCMetadata.AddNameValue("SAMP_DEN_COEFF", szRPC.sampDenCoef.c_str());
+
+		(*pmMetadata)[MDPrefix_RPC] = szRPCMetadata;
+
+		return pmMetadata;
 	};
 
     

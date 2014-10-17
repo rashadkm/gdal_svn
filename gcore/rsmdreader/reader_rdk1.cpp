@@ -28,12 +28,46 @@
  ****************************************************************************/
 
 #include <sstream>
+#include <time.h>
+#include <stdio.h>
+
 #include "cplkeywordparser.h"
 
 #include "reader_rdk1.h"
 
 #include "remote_sensing_metadata.h"
 #include "utils.h"
+
+namespace
+{
+	const time_t GetAcqisitionTimeFromString(const CPLString& rsAcqisitionTime, CPLString& rsAcqisitionTimeFormatted)
+	{
+		size_t iYear;
+		size_t iMonth;
+		size_t iDay;
+		size_t iHours;
+		size_t iMin;
+		size_t iSec;
+
+		int r = sscanf ( rsAcqisitionTime.c_str(), "%d/%d/%d %d:%d:%d.%*s", &iDay, &iMonth, &iYear, &iHours, &iMin, &iSec);
+		if (r != 6)
+			return -1;
+		
+		tm tmDateTime;
+		tmDateTime.tm_sec = iSec;
+		tmDateTime.tm_min = iMin;
+		tmDateTime.tm_hour = iHours;
+		tmDateTime.tm_mday = iDay;
+		tmDateTime.tm_mon = iMonth - 1;
+		tmDateTime.tm_year = iYear - 1900;
+
+		char buffer [80];
+		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		rsAcqisitionTimeFormatted.assign(&buffer[0]);
+
+		return mktime(&tmDateTime);
+	}
+}
 
 RDK1::RDK1(const char* pszFilename)
 	:RSMDReader(pszFilename, "RDK1")
@@ -71,9 +105,9 @@ void RDK1::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 		}
 		
 		CPLStringList expulsionNodeNames;
-		ReadXMLToStringList(psRootNode, szrBadXMLMetadata, expulsionNodeNames);
+		ReadXMLToStringList(psRootNode, expulsionNodeNames, szrBadXMLMetadata);
 	}
-
+	
 	for(int i = 0; i < szrBadXMLMetadata.size(); i++)
 	{
 		char *ppszRootKey = NULL;				
@@ -116,7 +150,7 @@ void RDK1::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList
 	if( CSLFindName(szrImageMetadata.List(), "MSP_ROOT.cCodeKA") != -1)
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "MSP_ROOT.cCodeKA");
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), CPLStripQuotes(SatelliteIdValue).c_str());
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "Acquisition.dDateRoute") != -1 &&
@@ -124,7 +158,9 @@ void RDK1::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList
 	{
 		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Acquisition.tTimeRoutePlan");
 		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "Acquisition.dDateRoute");
-		CPLString AcqisitionDateTime = osAcqisitionDate + " " + osAcqisitionTime;
+		CPLString AcqisitionDateTime;
+
+		GetAcqisitionTimeFromString(osAcqisitionDate + " " + osAcqisitionTime, AcqisitionDateTime);		
 		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), AcqisitionDateTime.c_str());
 	}
 }

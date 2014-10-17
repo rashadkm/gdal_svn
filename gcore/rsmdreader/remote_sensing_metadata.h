@@ -27,20 +27,15 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
-#ifndef _CPLXML_UTILS_H_INCLUDED
-#define _CPLXML_UTILS_H_INCLUDED
-
-#include "cpl_minixml.h"
+#ifndef _REMOTE_SENSING_METADATA_H_INCLUDED
+#define _REMOTE_SENSING_METADATA_H_INCLUDED
 
 #include "cpl_string.h"
 
-const char* GetCPLXMLNodeTextValue(const CPLXMLNode* psNode);
+const CPLString MDName_AcquisitionDateTime = "AcquisitionDateTime";
+const CPLString AcquisitionDateTimeFormat = "%Y-%m-%d  %H:%M:%S";
 
-void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues, const CPLString& osRootNodeName, const CPLStringList& expulsionNodeNames);
-void ReadXMLToStringList(CPLXMLNode* psNode, const CPLStringList& expulsionNodeNames, CPLStringList& szlValues);
+const CPLString MDName_SatelliteId = "SatelliteId";
+const CPLString MDName_CloudCover = "CloudCover";
 
-const char *CPLGoodParseNameValue(const char *pszNameValue, char **ppszKey, const char separator);
-
-bool GetAcqisitionTime(const CPLString& rsAcqisitionStartTime, const CPLString& rsAcqisitionEndTime, const CPLString& osDateTimeTemplate, CPLString& osAcqisitionTime);
-
-#endif /* _CPLXML_UTILS_H_INCLUDED */
+#endif /* _REMOTE_SENSING_METADATA_H_INCLUDED */

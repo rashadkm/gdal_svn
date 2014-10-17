@@ -45,6 +45,8 @@ include_directories(${GDAL_ROOT_SOURCE_DIR}/ogr/ogrsf_frmts/generic)
 include_directories(${GDAL_ROOT_SOURCE_DIR}/alg)
 include_directories(${GDAL_ROOT_SOURCE_DIR}/frmts/gtiff)
 
+add_subdirectory(rsmdreader)
+
 set(LIB_HHEADERS
     gdal_version.h
     gdal.h

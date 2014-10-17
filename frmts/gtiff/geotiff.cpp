@@ -10813,34 +10813,12 @@ char **GTiffDataset::GetMetadata( const char * pszDomain )
 {
 	if (pRSMDReader != NULL && !bMetadataHaveBeenRead)
 	{
-		CPLStringList metadata = pRSMDReader->GetMetadata();
+		const std::map<CPLString, CPLStringList>* pmMetadata = pRSMDReader->GetMetadata();
 		
-		CPLStringList osIMDMD;
-		CPLStringList osImageryMD;
-		CPLStringList osRPCMD;
+		CPLStringList osIMDMD = pmMetadata->find(MDPrefix_IMD)->second;
+		CPLStringList osImageryMD = pmMetadata->find(MDPrefix_Common_IMD)->second;
+		CPLStringList osRPCMD = pmMetadata->find(MDPrefix_RPC)->second;
 
-		for( int i = 0; i < metadata.size(); i++ )
-		{
-			//printf( "\t\t >>> metadata: %s\n", metadata[i] );
-			size_t found = CPLString(metadata[i]).rfind("IMD");
-			if (found == 0)
-			{
-				osIMDMD.AddString(metadata[i]);
-				continue;
-			}
-			found = CPLString(metadata[i]).rfind("IMAGERY");
-			if (found == 0)
-			{
-				osImageryMD.AddString(metadata[i]);
-				continue;
-			}
-			found = CPLString(metadata[i]).rfind("RPC");
-			if (found == 0)
-			{
-				osRPCMD.AddString(metadata[i]);
-				continue;
-			}
-		}
 		if(osIMDMD.size() > 0)
 		{
 			osIMDMD.AddNameValue("md_type", "imd");
@@ -10856,6 +10834,8 @@ char **GTiffDataset::GetMetadata( const char * pszDomain )
 		{
 			oGTiffMDMD.SetMetadata( osRPCMD.List(), "RPC" );
 		}
+		
+		delete pmMetadata;
 
 		bMetadataHaveBeenRead = true;
 	}
@@ -10924,34 +10904,12 @@ const char *GTiffDataset::GetMetadataItem( const char * pszName,
 {
     if (pRSMDReader != NULL && !bMetadataHaveBeenRead)
 	{
-		CPLStringList metadata = pRSMDReader->GetMetadata();
+		const std::map<CPLString, CPLStringList>* pmMetadata = pRSMDReader->GetMetadata();
 		
-		CPLStringList osIMDMD;
-		CPLStringList osImageryMD;
-		CPLStringList osRPCMD;
-
-		for( int i = 0; i < metadata.size(); i++ )
-		{
-			//printf( "\t\t >>> metadata: %s\n", metadata[i] );
-			size_t found = CPLString(metadata[i]).rfind("IMD");
-			if (found == 0)
-			{
-				osIMDMD.AddString(metadata[i]);
-				continue;
-			}
-			found = CPLString(metadata[i]).rfind("IMAGERY");
-			if (found == 0)
-			{
-				osImageryMD.AddString(metadata[i]);
-				continue;
-			}
-			found = CPLString(metadata[i]).rfind("RPC");
-			if (found == 0)
-			{
-				osRPCMD.AddString(metadata[i]);
-				continue;
-			}
-		}
+		CPLStringList osIMDMD = pmMetadata->find(MDPrefix_IMD)->second;
+		CPLStringList osImageryMD = pmMetadata->find(MDPrefix_Common_IMD)->second;
+		CPLStringList osRPCMD = pmMetadata->find(MDPrefix_RPC)->second;
+		
 		if(osIMDMD.size() > 0)
 		{
 			osIMDMD.AddNameValue("md_type", "imd");
@@ -10968,6 +10926,7 @@ const char *GTiffDataset::GetMetadataItem( const char * pszName,
 			oGTiffMDMD.SetMetadata( osRPCMD.List(), "RPC" );
 		}
 
+		delete pmMetadata;
 		bMetadataHaveBeenRead = true;
 	}
     

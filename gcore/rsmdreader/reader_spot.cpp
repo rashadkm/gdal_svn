@@ -77,7 +77,6 @@ const bool Spot::IsFullCompliense() const
 
 void Spot::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 {
-	printf(">>> Spot::ReadImageMetadata\n");
 	ReadImageMetadataFromXML(szrImageMetadata);
 }
 

@@ -28,12 +28,47 @@
  ****************************************************************************/
 
 #include <fstream>
+#include <stdio.h>
 
 #include "cplkeywordparser.h"
 
 #include "reader_alos.h"
 #include "remote_sensing_metadata.h"
 #include "utils.h"
+
+namespace
+{
+	const time_t GetAcqisitionTimeFromString(const CPLString& rsAcqisitionTime, CPLString& rsAcqisitionTimeFormatted)
+	{
+		size_t iYear;
+		size_t iMonth;
+		size_t iDay;
+		size_t iHours = 0;
+		size_t iMin = 0;
+		size_t iSec = 0;
+
+		int r = sscanf ( rsAcqisitionTime.c_str(), "%4d%2d%2d %d:%d:%d.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+
+		// For Img_SceneCenterDateTime r = 20090428 07:53:50.116 
+		// For Lbi_ObservationDate r = 3 (20100815)
+		if (r != 6 && r != 3)
+			return -1;
+		
+		tm tmDateTime;
+		tmDateTime.tm_sec = iSec;
+		tmDateTime.tm_min = iMin;
+		tmDateTime.tm_hour = iHours;
+		tmDateTime.tm_mday = iDay;
+		tmDateTime.tm_mon = iMonth - 1;
+		tmDateTime.tm_year = iYear - 1900;
+
+		char buffer [80];
+		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		rsAcqisitionTimeFormatted.assign(&buffer[0]);
+
+		return mktime(&tmDateTime);
+	}
+}
 
 ALOS::ALOS(const char* pszFilename)
 	:RSMDReader(pszFilename, "ALOS")
@@ -94,24 +129,28 @@ void ALOS::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList
 	if( CSLFindName(szrImageMetadata.List(), "Img_SceneCenterDateTime") != -1)
 	{
 		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Img_SceneCenterDateTime");
-		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTime.c_str());
+		CPLString osAcqisitionTimeF = "";
+		GetAcqisitionTimeFromString(CPLStripQuotes(osAcqisitionTime), osAcqisitionTimeF);
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTimeF.c_str());
 	}
 	else if ( CSLFindName(szrImageMetadata.List(), "Lbi_ObservationDate") != -1)
 	{
 		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Lbi_ObservationDate");
-		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTime.c_str());
+		CPLString osAcqisitionTimeF = "";
+		GetAcqisitionTimeFromString(CPLStripQuotes(osAcqisitionTime), osAcqisitionTimeF);
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTimeF.c_str());
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "Lbi_Satellite") != -1)
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "Lbi_Satellite");
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), CPLStripQuotes(SatelliteIdValue).c_str());
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "Img_CloudQuantityOfAllImage") != -1)
 	{
 		CPLString CloudCover = CSLFetchNameValue(szrImageMetadata.List(), "Img_CloudQuantityOfAllImage");
-		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), CloudCover.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), CPLStripQuotes(CloudCover).c_str());
 	}
 }
 

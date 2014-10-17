@@ -26,7 +26,6 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
-
 #include <time.h>
 
 #include "utils.h"
@@ -139,8 +138,44 @@ const char *CPLGoodParseNameValue(const char *pszNameValue, char **ppszKey, cons
     return NULL;
 }
 
+const time_t GetTMFromString(const CPLString& rsAcqisitionTime, const CPLString& osDateTimeTemplate)
+{
+
+	size_t iYear;
+	size_t iMonth;
+	size_t iDay;
+	size_t iHours;
+	size_t iMin;
+	size_t iSec;
+
+
+	tm timeTM;
+
+
+	timeTM.tm_sec = iSec;
+	timeTM.tm_min = iMin;
+	timeTM.tm_hour = iHours;
+	timeTM.tm_mday = iDay;
+	timeTM.tm_mon = iMonth - 1;
+	timeTM.tm_year = iYear - 1900;
+
+	return mktime(&timeTM);
+}
+
+bool FormatAcqisitionTime(const CPLString& rsAcqisitionTime, const CPLString& osDateTimeTemplate, CPLString& osAcqisitionTime)
+{
+	printf(">>> FormatAcqisitionTime\n");
+	const time_t tAcqisitionTime = GetTMFromString(rsAcqisitionTime, osDateTimeTemplate);
+	if (tAcqisitionTime == -1)
+		return false;
+
+	printf(">>> FormatAcqisitionTime: %s\n", ctime(&tAcqisitionTime));
+	osAcqisitionTime.assign(ctime(&tAcqisitionTime));
+}
+
 bool GetAcqisitionTime(const CPLString& rsAcqisitionStartTime, const CPLString& rsAcqisitionEndTime, const CPLString& osDateTimeTemplate, CPLString& osAcqisitionTime)
 {
+	/*
 		size_t iYearStart;
 		size_t iYearEnd;
 
@@ -184,11 +219,16 @@ bool GetAcqisitionTime(const CPLString& rsAcqisitionStartTime, const CPLString& 
 		timeptrEnd.tm_year = iYearEnd-1900;
 		
 		time_t timeEnd = mktime(&timeptrEnd);
+	*/
+		time_t timeStart = GetTMFromString(rsAcqisitionStartTime, osDateTimeTemplate);
+		time_t timeEnd = GetTMFromString(rsAcqisitionEndTime, osDateTimeTemplate);
 
 		time_t timeAverage = timeStart + (timeEnd - timeStart)/2;
 
+		/*
 		tm * acqisitionTime = localtime(&timeAverage);
 		
+		/*
 		osAcqisitionTime.Printf("%d %d %d %d %d %d", 
 			1900 + acqisitionTime->tm_year,
 			1 + acqisitionTime->tm_mon,
@@ -196,6 +236,30 @@ bool GetAcqisitionTime(const CPLString& rsAcqisitionStartTime, const CPLString& 
 			acqisitionTime->tm_hour,
 			acqisitionTime->tm_min,
 			acqisitionTime->tm_sec);
+		*/
+		osAcqisitionTime.assign(ctime(&timeAverage));
 
 		return true;
 	}
+
+CPLString CPLStrip(const CPLString& sString, const char cChar)
+{
+	size_t dCopyFrom = 0;
+	size_t dCopyCount = sString.size();
+
+	if (sString[0] == cChar)
+	{
+		dCopyFrom++;
+		dCopyCount--;
+	}
+
+	if (sString[sString.size() - 1] == cChar)
+		dCopyCount--;
+	
+	return sString.substr(dCopyFrom, dCopyCount);
+}
+
+CPLString CPLStripQuotes(const CPLString& sString)
+{
+	return CPLStrip( CPLStrip(sString, '"'), '\'');
+}

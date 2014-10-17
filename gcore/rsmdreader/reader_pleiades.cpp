@@ -34,6 +34,37 @@
 #include "remote_sensing_metadata.h"
 #include "utils.h"
 
+namespace
+{
+	const time_t GetAcqisitionTimeFromString(const CPLString& rsAcqisitionTime, CPLString& rsAcqisitionTimeFormatted)
+	{
+		size_t iYear;
+		size_t iMonth;
+		size_t iDay;
+		size_t iHours;
+		size_t iMin;
+		size_t iSec;
+
+		int r = sscanf ( rsAcqisitionTime.c_str(), "%d-%d-%d %d:%d:%d.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+		if (r != 6)
+			return -1;
+		
+		tm tmDateTime;
+		tmDateTime.tm_sec = iSec;
+		tmDateTime.tm_min = iMin;
+		tmDateTime.tm_hour = iHours;
+		tmDateTime.tm_mday = iDay;
+		tmDateTime.tm_mon = iMonth - 1;
+		tmDateTime.tm_year = iYear - 1900;
+
+		char buffer [80];
+		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		rsAcqisitionTimeFormatted.assign(&buffer[0]);
+
+		return mktime(&tmDateTime);
+	}
+}
+
 Pleiades::Pleiades(const char* pszFilename)
 	:RSMDReader(pszFilename, "Pleiades")
 {
@@ -92,23 +123,22 @@ void Pleiades::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
 
 void Pleiades::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList& szrCommonImageMetadata) const
 {
-	//if( CSLFindName(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.INSTRUMENT_INDEX") != -1)
-	if( CSLFindName(szrImageMetadata.List(), "Source_Identification.Strip_Source.MISSION") != -1 &&
-		CSLFindName(szrImageMetadata.List(), "Source_Identification.Strip_Source.MISSION_INDEX") != -1)
+	if( CSLFindName(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.MISSION") != -1 &&
+		CSLFindName(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.MISSION_INDEX") != -1)
 	{
-		//CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.INSTRUMENT_INDEX");
 		CPLString SatelliteIdValue = CPLSPrintf( "%s.%s",
-			CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.MISSION"),
-			CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.MISSION_INDEX") );
+			CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.MISSION"),
+			CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.MISSION_INDEX") );
 		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
 	}
 
-	if( CSLFindName(szrImageMetadata.List(), "Source_Identification.Strip_Source.IMAGING_DATE") != -1 &&
-			CSLFindName(szrImageMetadata.List(), "Source_Identification.Strip_Source.IMAGING_TIME") != -1)
+	if( CSLFindName(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.IMAGING_DATE") != -1 &&
+			CSLFindName(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.IMAGING_TIME") != -1)
 	{
-		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.IMAGING_TIME");
-		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "Source_Identification.Strip_Source.IMAGING_DATE");
-		CPLString AcqisitionDateTime = osAcqisitionDate + " " + osAcqisitionTime;
+		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.IMAGING_TIME");
+		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.IMAGING_DATE");
+		CPLString AcqisitionDateTime;
+		GetAcqisitionTimeFromString( osAcqisitionDate + " " + osAcqisitionTime, AcqisitionDateTime);
 		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), AcqisitionDateTime.c_str());
 	}
 
