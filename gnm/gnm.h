@@ -3,7 +3,7 @@
  *
  * Name:     gnm.h
  * Project:  GDAL/OGR Geography Network support (Geographic Network Model)
- * Purpose:  GNM declarations.
+ * Purpose:  GNM general declarations.
  * Author:   Mikhail Gusev (gusevmihs at gmail dot com)
  *
  ******************************************************************************
@@ -33,53 +33,54 @@
 
 #include "ogrsf_frmts.h"
 
-// Supported GDAL formats for connectivities.
-// FORMAT NOTE: the connectivity will not be created for those formats,
-// which does not appear in this list, while there are some issues which
-// which can cause an incorrect work of connectivity.
-static const char *GNMSupportedDatasets[] = {
+#include <set>
+
+// Supported Dataset formats for GDAL-networks.
+// FORMAT NOTE: the GDAL network will not be created for those formats,
+// which does not appear in this list, because there are some format-specific
+// issues which can cause an incorrect work of network.
+static const char *GNMGdalSupportedDrivers[] = {
     "ESRI Shapefile",
+    // ...
     NULL };
 
 // General constants.
 #define GNM_VERSION "1.0.0"
 
-// Types.
-typedef int GNMGFID; // Alias for long. Can be replaced with GUIntBig.
-
 // Error codes.
 typedef int GNMErr;
 #define GNMERR_NONE 0
 #define GNMERR_FAILURE 1
-#define GNMERR_UNABLE_CREATE_SYSLAYER 2
-#define GNMERR_UNABLE_CREATE_SYSFIELD 3
-//#define GNMERR_UNSUPPORTED_BEHAVIOR 4
+#define GNMERR_UNSUPPORTED 2
+#define GNMERR_NOTFOUND 3
+#define GNMERR_CONRULE_RESTRICT 4
 
 // Obligatory system layers.
-#define GNM_CON_SYSLAYERS_COUNT 3
 #define GNM_SYSLAYER_META "_gnm_meta"
 #define GNM_SYSLAYER_GRAPH "_gnm_graph"
 #define GNM_SYSLAYER_CLASSES "_gnm_classes"
+#define GNM_SYSLAYER_FEATURES "_gnm_features"
+#define GNM_SYSLAYER_RULES "_gnm_rules"
+// FORMAT NOTE: Shape dataset regards all layers in the directory as the layers
+// of the dataset, even thouse which were added to the directory manually and
+// were not provided with according system fields. So the _gnm_classes serves
+// also to register those layers, which are "under" the network control.
 
-// Direction of an edge.
-typedef int GNMDirection;
-#define GNM_DIR_DOUBLE 0 // double-directed
-#define GNM_DIR_SRCTOTGT 1 // from source to target
-#define GNM_DIR_TGTTOSRC 2 // from target to source
+// Obligatory class layers.
+#define GNM_CLASSLAYER_SYSEDGES "gnm_sysedges"
 
 // Names of options in the pair name & value, which can be passed
-// when the connectivity is being created.
-//#define GNM_CREATE_OPTION_NOTTRANSFORMALL "not_transform_all"
-//#define GNM_CREATE_OPTIONPAIR_ALIAS "con_alias"
-#define GNM_CREATE_OPTIONPAIR_NAME "con_name"
-#define GNM_CREATE_OPTIONPAIR_DESCR "con_descr"
+// when the network is being created / opened.
+#define GNM_INIT_OPTIONPAIR_NAME "net_name"
+#define GNM_INIT_OPTIONPAIR_DESCR "net_descr"
+#define GNM_INIT_OPTIONPAIR_SRS "net_srs"
 
-// Connectivity metadata parameter names.
+// Network's metadata parameters names.
 #define GNM_METAPARAM_VERSION "gnm_version"
 #define GNM_METAPARAM_SRS "common_srs"
 #define GNM_METAPARAM_GFIDCNT "gfid_counter" // the current is that we should assign
-#define GNM_METAPARAM_NAME "con_name"
-#define GNM_METAPARAM_DESCR "con_descr" // connectivity description
+#define GNM_METAPARAM_NAME "net_name"
+#define GNM_METAPARAM_DESCR "net_descr" // network description
 
 // System field names.
 // FORMAT NOTE: Shapefile driver does not support field names more than 10 characters.
@@ -91,114 +92,108 @@ typedef int GNMDirection;
 #define GNM_SYSFIELD_COST "cost"
 #define GNM_SYSFIELD_INVCOST "inv_cost"
 #define GNM_SYSFIELD_DIRECTION "direction"
-#define GNM_SYSFIELD_GFID "gfid"
+#define GNM_SYSFIELD_GFID "gfid" // TODO: _gnm_gfid
 #define GNM_SYSFIELD_LAYERNAME "layer_name"
-//#define GNM_SYSFIELD_FID "fid"
+#define GNM_SYSFIELD_FID "fid"
+#define GNM_SYSFIELD_RULESTRING "rule_str"
 
-	
-/************************************************************************/
-/*                      GNMConnectivity                               */
-/************************************************************************/
-class CPL_DLL GNMConnectivity
-{ 
-    friend class GNMManager;
+// Rule strings key-words.
+#define GNM_KW_NETWORK "NETWORK"
+#define GNM_KW_CLASS "CLASS"
+#define GNM_KW_CONNECTS "CONNECTS"
+#define GNM_KW_WITH "WITH"
+#define GNM_KW_VIA "VIA"
+#define GNM_KW_COSTS "COSTS"
+#define GNM_KW_INVCOSTS "INVCOSTS"
+#define GNM_KW_DIRECTS "DIRECTS"
+#define GNM_KW_BEHAVES "BEHAVES"
+#define GNM_KW_MULT "*"
+#define GNM_KW_ADD "+"
+#define GNM_KW_SUB "-"
+#define GNM_KW_DIV "/"
 
- // Fields:
+// Other string constants.
+#define GNM_SRSFILENAME "_gnm_srs.prj"
 
-    private:
+// Types.
+typedef int GNMGFID; // Alias for long. Can be replaced with GUIntBig.
+                     // NOTE: replace %ld in any sprintf() when the long type
+                     // for GFIDs will be used.
 
-    GDALDataset *_poDataSet;
-    long _meta_vrsn_i;
-    long _meta_srs_i;
-    long _meta_gfidcntr_i;
-    long _meta_name_i;
-    long _meta_descr_i;
-    bool _ownDataset;
+typedef int GNMDirection; // Direction of an edge.
+#define GNM_DIR_DOUBLE 0 // double-directed
+#define GNM_DIR_SRCTOTGT 1 // from source to target
+#define GNM_DIR_TGTTOSRC 2 // from target to source
 
-    protected:
+/*
+struct GNMConnection // General connection type.
+{
+    GNMGFID nSrcGFID;
+    GNMGFID nTgtGFID;
+    GNMGFID nConGFID;
+    double dCost;
+    double dInvCost;
+    GNMDirection dir;
+};
+*/
 
-    OGRSpatialReference *_poSpatialRef;
+// Types for GDAL-network rules.
 
- // Additional:
+typedef std::pair<std::string,std::string> _GNMVertEdgeClassNames;
+typedef std::set<_GNMVertEdgeClassNames> _GNMLegalCons;
 
-    OGRFeature *_findConnection (OGRLayer *l,GNMGFID s,GNMGFID t,GNMGFID c);
+typedef enum
+{
+    gnmOpUndefined = 0,
+    gnmOpField = 1,
+    gnmOpConst = 2,
+    gnmOpFieldMConst = 3,
+    gnmOpFieldAConst = 4,
+    gnmOpFieldSConst = 5,
+    gnmOpFieldDConst = 6
+} GNMRuleOperation;
 
-    bool _isClassLayer (const char *layerName);
+struct GNMClassRule
+{
+    std::string dirCostField;
+    GNMRuleOperation dirCostOper;
+    double dirCostConst;
+    std::string invCostField;
+    GNMRuleOperation invCostOper;
+    double invCostConst;
+    std::string dirField;
+    std::string roleStr;
+    _GNMLegalCons conRules;
 
-    char *_makeNewLayerName (const char *name, OGRwkbGeometryType geotype);
-
- // Interface:
-
-    private:
-
-    virtual GNMErr _create (GDALDataset *poDS,
-                            char *pszSrsInput,
-                            char **papszOptions = NULL);
-
-    virtual GNMErr _open(GDALDataset *poDS);
-
-    static GNMErr _remove (GDALDataset *poDS);
-
-    static bool _has (GDALDataset *poDS);
-
-    public:
-
-    GNMConnectivity();
-    ~GNMConnectivity();
-
- // Additional methods:
-
-    static bool IsDatasetFormatSupported (GDALDataset *poDS);
-
-    GDALDataset *GetDataset ();
-
-    void FlushCache ();
-
-    char **GetMetaParamValues ();
-
-    const OGRSpatialReference* GetSpatialReference() const;
-
- // Interface for reimplementing in subclasses:
-
-    virtual OGRLayer *CreateLayer (const char *pszName,
-                             OGRFeatureDefn *FeatureDefn,
-                             OGRwkbGeometryType eGType = wkbPoint,
-                             char **papszOptions = NULL);
-
-    virtual GNMErr CopyLayer (OGRLayer *poSrcLayer,
-                                 const char *pszNewName);
-
-    virtual GNMErr ConnectFeatures (GNMGFID nSourceGFID,
-                                    GNMGFID nTargetGFID,
-                                    GNMGFID nConnectorGFID,
-                                    double dCost,
-                                    double dInvCost,
-                                    GNMDirection dir);
-
-    virtual GNMErr DisconnectFeatures (GNMGFID nSourceGFID,
-                                       GNMGFID nTargetGFID,
-                                       GNMGFID nConnectorGFID);
-
-    virtual GNMErr ReconnectFeatures (GNMGFID nSourceGFID,
-                                      GNMGFID nTargetGFID,
-                                      GNMGFID nConnectorGFID,
-                                      GNMDirection newDir);
-
-    virtual GNMErr ReconnectFeatures (GNMGFID nSourceGFID,
-                                      GNMGFID nTargetGFID,
-                                      GNMGFID nConnectorGFID,
-                                      double dNewCost,
-                                      double dNewInvCost);
+    GNMClassRule()
+    {
+        // TODO: remove unnecessary assignements.
+        dirCostField = "";
+        dirCostOper = gnmOpUndefined;
+        dirCostConst = 0.0;
+        invCostField = "";
+        invCostOper = gnmOpUndefined;
+        invCostConst = 0.0;
+        dirField = "";
+        roleStr = "";
+    }
 };
 
+typedef std::map<std::string, GNMClassRule*> GNMClassRuleMap; // Array of class rules.
+
+typedef void *GNMNetworkH;
+typedef void *GNMGdalNetworkH;
+
+class GNMNetwork;
+class GNMGdalNetwork;
+
 
 /************************************************************************/
-/*                      GNMManager                               */
+/*                               GNMManager                             */
 /************************************************************************/
 /**
- * \brief Provides an abstraction to manage the connectivities. This class
- * decides which connectivity format exactly to manipulate, while user
- * works only with GNMConnectivity.
+ * Static class which manages networks of diffirent formats. By default
+ * manages the GNMGdalNetwork.
  *
  * @since GDAL 2.0
  */
@@ -206,27 +201,293 @@ class CPL_DLL GNMManager
 {
     public:
 
-    static GNMConnectivity *CreateConnectivity (const char *pszName,
-                                                    const char *pszFormat,
-                                                    char *pszSrsInput,
-                                                    char **papszConOptions = NULL,
-                                                    char **papszDatasetOptions = NULL);
+// Public GNM managing methods.
 
-    static GNMConnectivity *CreateConnectivity (GDALDataset *poDS,
-                                                char *pszSrsInput,
-                                                char **papszOptions = NULL,
-                                                int bNative = FALSE);
+    static GNMNetwork *CreateConnectivity (GDALDataset *poDS,
+                                                int bNative = FALSE,
+                                                char **papszOptions = NULL);
 
-    static GNMConnectivity *OpenConnectivity (GDALDataset *poDS,
-                                              int bNative = FALSE);
+    static GNMNetwork *Open (GDALDataset *poDS,
+                             int bNative = FALSE,
+                             char **papszOptions = NULL);
 
-    static void CloseConnectivity (GNMConnectivity *poCon);
+    static void Close (GNMNetwork *poNet,
+                       int bNative = FALSE);
 
     static GNMErr RemoveConnectivity (GDALDataset *poDS,
-                                      int bNative);
+                                      int bNative = FALSE);
 
     static bool HasConnectivity (GDALDataset *poDS,
-                                 int bNative);
+                                 int bNative = FALSE);
+
+// Public methods for managing GDAL-networks directly.
+
+    static GNMGdalNetwork *GdalCreateNetwork (const char *pszName,
+                                              const char *pszFormat,
+                                              const char *pszSrsInput,
+                                              char **papszOptions = NULL,
+                                              char **papszDatasetOptions = NULL);
+
+    static GNMGdalNetwork *GdalOpenNetwork (const char *pszName,
+                                            char **papszOptions = NULL);
+
+    static void GdalCloseNetwork (GNMGdalNetwork *poNet);
+
+    static GNMErr GdalDeleteNetwork (const char *pszName);
 };
+
+
+/************************************************************************/
+/*                            GNMNetwork                                */
+/************************************************************************/
+/**
+ * Abstract interface class for editing/reading networks of different
+ * formats.
+ *
+ * @since GDAL 2.0
+ */
+class CPL_DLL GNMNetwork: public GDALMajorObject
+{
+    private:
+
+    bool _isOwnLayer (OGRLayer *poLayer);
+
+    protected:
+
+    //char *_formatName;
+
+    GDALDataset *_poDataSet;
+    bool _ownDataset;
+    std::set <OGRLayer*> _classesSet; // Do not free these pointers manually.
+
+    public:
+
+    GNMNetwork ();
+    ~GNMNetwork ();
+
+// Common methods:
+
+    //const char *GetFormatName ();
+
+    GDALDataset *GetDataset ();
+
+    void FlushCache ();
+
+// Connections reading:
+
+    //virtual GNMConnection *GetConnection (long nConFID) = 0;
+    //virtual GNMConnection GetNextConnection () = 0;
+    //virtual void ResetConnectionsReading () = 0;
+    virtual OGRFeature *GetConnection (long nConFID) = 0;
+
+    // TODO: make not pure virtual.
+    virtual OGRFeature *GetNextConnection () = 0;
+
+    // TODO: make not pure virtual.
+    virtual void ResetConnectionsReading () = 0;
+
+// Connections editing:
+
+    virtual GNMErr ConnectFeatures (GNMGFID nSrcGFID,
+                                    GNMGFID nTgtGFID,
+                                    GNMGFID nConGFID,
+                                    double dCost,
+                                    double dInvCost,
+                                    GNMDirection nDir) = 0;
+
+    //virtual GNMErr ConnectFeatures (GNMGFID nSrcGFID,
+                                    //GNMGFID nTgtGFID,
+                                    //GNMGFID nConGFID) = 0;
+
+    virtual GNMErr DisconnectFeatures (GNMGFID nSrcGFID,
+                                       GNMGFID nTgtGFID,
+                                       GNMGFID nConGFID) = 0;
+
+    virtual GNMErr ReconnectFeatures (GNMGFID nSrcGFID,
+                                      GNMGFID nTgtGFID,
+                                      GNMGFID nConGFID,
+                                      GNMDirection nNewDir);
+
+    virtual GNMErr ReconnectFeatures (GNMGFID nSrcGFID,
+                                      GNMGFID nTgtGFID,
+                                      GNMGFID nConGFID,
+                                      double dNewCost,
+                                      double dNewInvCost);
+
+    virtual GNMErr AutoConnect (OGRLayer **papoLayers,
+                                double dTolerance,
+                                char **papszParams);
+
+    virtual GNMErr DisconnectAll ();
+
+// Features reading:
+
+    virtual OGRFeature *GetFeatureByGFID (GNMGFID nGFID) = 0;
+
+// Features editing:
+
+    virtual OGRLayer *CreateLayer (const char *pszName,
+                                   OGRFeatureDefn *poFeatureDefn,
+                                   OGRSpatialReference *poSpatialRef = NULL,
+                                   OGRwkbGeometryType eGType = wkbPoint,
+                                   char **papszOptions = NULL);
+
+    virtual GNMErr DeleteLayer (const char *pszName);
+
+    virtual GNMErr CopyLayer (OGRLayer *poSrcLayer,
+                              const char *pszNewName);
+
+    virtual GNMGFID CreateFeature (OGRLayer *poLayer,
+                                   OGRFeature *poFeature);
+
+    virtual GNMErr SetFeature (OGRLayer *poLayer,
+                               OGRFeature *poFeature);
+
+    virtual GNMErr DeleteFeature (OGRLayer *poLayer,
+                                  long nFID);
+
+// Rules editing:
+
+    virtual GNMErr CreateRule (const char *pszRuleStr);
+};
+
+
+/************************************************************************/
+/*                         GNMGdalNetwork                               */
+/************************************************************************/
+/**
+ * General GDAL class for editing/reading networks. The supported dataset
+ * drivers can be listed by GetSupportedDrivers() static method.
+ * This class is used by default in any network operations when the concrete
+ * network format is undefined.
+ *
+ * NOTE: The single and common spatial reference sytem is used for all layers
+ * which are "under control" of the network. Each feature appears in the network
+ * will be transformed to this SRS.
+ *
+ * @since GDAL 2.0
+ */
+class CPL_DLL GNMGdalNetwork: public GNMNetwork
+{ 
+    friend class GNMManager;
+
+    private:
+
+    //char *_driverName;
+
+    protected:
+
+    long _meta_vrsn_i;
+    long _meta_srs_i;
+    long _meta_gfidcntr_i;
+    long _meta_name_i;
+    long _meta_descr_i;
+
+    OGRSpatialReference *_poSpatialRef;
+
+    GNMClassRuleMap _classRules;
+
+    bool _isOwnLayer (OGRLayer *poLayer);
+
+    OGRFeature *_findConnection (OGRLayer *graph,
+                                 GNMGFID src,
+                                 GNMGFID tgt,
+                                 GNMGFID con);
+
+    bool _isClassLayer (const char *layerName);
+
+    char *_makeNewLayerName (const char *name,
+                             OGRwkbGeometryType geotype);
+
+    GNMErr _parseRuleString (const char *ruleStr);
+
+    GNMClassRule *_findRuleForClass (std::string clStr);
+
+    public:
+
+    GNMGdalNetwork();
+    ~GNMGdalNetwork();
+
+// Implemented interface:
+
+    //virtual GNMConnection *GetConnection (long nConFID);
+    virtual OGRFeature *GetConnection (long nConFID);
+
+    virtual OGRFeature *GetNextConnection ();
+
+    virtual void ResetConnectionsReading ();
+
+    virtual OGRLayer *CreateLayer (const char *pszName,
+                                   OGRFeatureDefn *poFeatureDefn,
+                                   OGRSpatialReference *poSpatialRef = NULL,
+                                   OGRwkbGeometryType eGType = wkbPoint,
+                                   char **papszOptions = NULL);
+
+    virtual GNMErr DeleteLayer (const char *pszName);
+
+    virtual GNMErr CopyLayer (OGRLayer *poSrcLayer,
+                              const char *pszNewName);
+
+    virtual GNMGFID CreateFeature (OGRLayer *poLayer,
+                                   OGRFeature *poFeature);
+
+    virtual GNMErr SetFeature (OGRLayer *poLayer,
+                               OGRFeature *poFeature);
+
+    virtual GNMErr DeleteFeature (OGRLayer *poLayer,
+                                  long nFID);
+
+    virtual GNMErr ConnectFeatures (GNMGFID nSrcGFID,
+                                    GNMGFID nTgtGFID,
+                                    GNMGFID nConGFID,
+                                    double dCost,
+                                    double dInvCost,
+                                    GNMDirection nDir);
+
+    virtual GNMErr DisconnectFeatures (GNMGFID nSrcGFID,
+                                       GNMGFID nTgtGFID,
+                                       GNMGFID nConGFID);
+
+    virtual GNMErr ReconnectFeatures (GNMGFID nSrcGFID,
+                                      GNMGFID nTgtGFID,
+                                      GNMGFID nConGFID,
+                                      GNMDirection nNewDir);
+
+    virtual GNMErr ReconnectFeatures (GNMGFID nSrcGFID,
+                                      GNMGFID nTgtGFID,
+                                      GNMGFID nConGFID,
+                                      double dNewCost,
+                                      double dNewInvCost);
+
+    virtual GNMErr DisconnectAll ();
+
+    virtual OGRFeature *GetFeatureByGFID (GNMGFID nGFID);
+
+    virtual GNMErr CreateRule (const char *pszRuleStr);
+
+// Specific methods:
+
+    //const char *GetDriverName ();
+
+    static bool IsDriverSupported (GDALDataset *poDS);
+
+    static char** GetSupportedDrivers ();
+
+    const OGRSpatialReference* GetSpatialReference() const;
+
+    char **GetMetaParamValues ();
+
+    const char *GetMetaParamValueName ();
+
+    const char *GetMetaParamValueDescr ();
+
+    std::pair<char**,int> GetClassLayers ();
+
+    GNMErr ClearRules ();
+
+    std::string GetClassRole (const char *pszLayerName);
+};
+
+
 
 #endif // _GNM_H_INCLUDED

@@ -29,7 +29,10 @@ cmake_minimum_required (VERSION 2.8.10)
 include_directories(${GDAL_ROOT_SOURCE_DIR}/gcore/)
 include_directories(${GDAL_ROOT_SOURCE_DIR}/alg/)
 include_directories(${GDAL_ROOT_SOURCE_DIR}/ogr/)
+include_directories(${GDAL_ROOT_SOURCE_DIR}/ogr/ogrsf_frmts) #[GM] otherwise cant find ogrsf_frmts.h in gnm.h
 include_directories(${GDAL_ROOT_SOURCE_DIR}/gnm/)
+include_directories(${GDAL_ROOT_SOURCE_DIR}/gnm/frmts)
+include_directories(${GDAL_ROOT_SOURCE_DIR}/gnm/analysis)
 
 option(GDAL_BUILD_APPS "Set ON to build apps" ON)
 if(GDAL_BUILD_APPS)
@@ -172,15 +175,27 @@ apps_macro("gdal_grid" "${gdal_grid_CSOURCES}" "${gdal_grid_HHEADERS}")
 	apps_macro("ogrlineref" "${ogrlineref_CSOURCES}" "${ogrlineref_HHEADERS}") 
 	
 if(GDAL_BUILD_NETWORK_SUPPORT)	
-#gnminfo
-	set(gnminfo_HHEADERS
-	)
+#gnmmanage
+    set(gnmmanage_HHEADERS
+    )
 
-	set(gnminfo_CSOURCES
-		gnminfo.cpp
+    set(gnmmanage_CSOURCES
+        gnmmanage.cpp
         commonutils.cpp
-	)
-	apps_macro("gnminfo" "${gnminfo_CSOURCES}" "${gnminfo_HHEADERS}") 
+    )
+    apps_macro("gnmmanage" "${gnmmanage_CSOURCES}" "${gnmmanage_HHEADERS}")
+
+#gnmanalyse
+    set(gnmanalyse_HHEADERS
+    )
+
+    set(gnmanalyse_CSOURCES
+        gnmanalyse.cpp
+        commonutils.cpp
+        #${GDAL_ROOT_SOURCE_DIR}/gnm/analysis/gnmstdanalysis.cpp #[GM] otherwise does not link with the GDAL dll, but with .obj
+    )
+    apps_macro("gnmanalyse" "${gnmanalyse_CSOURCES}" "${gnmanalyse_HHEADERS}")
+
 endif(GDAL_BUILD_NETWORK_SUPPORT)
     	   
 

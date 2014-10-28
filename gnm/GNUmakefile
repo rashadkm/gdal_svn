@@ -1,24 +1,25 @@
 
 include ../GDALmake.opt
 
-OBJ	=	gnmconnectivity.o gnmmanager.o
+OBJ	=	gnmnetwork.o gnmgdalnetwork.o gnmgdalrule.o gnmmanager.o
 
-CPPFLAGS	:=	$(GDAL_INCLUDE) $(CPPFLAGS)  -I../ogr -I../ogr/ogrsf_frmts -I../gcore
+CPPFLAGS	:=	$(GDAL_INCLUDE)	$(CPPFLAGS) -I../ogr -I../ogr/ogrsf_frmts -I../gcore -I./gnm/frmts -I../gnm
 
+default:	analysis-target $(OBJ:.o=.$(OBJ_EXT))
 
-default:	$(OBJ:.o=.$(OBJ_EXT))
+analysis-target:
+	(cd analysis; $(MAKE))
 
-$(OBJ):	gnm.h
+$(OBJ):	gnm.h gnm_frmts.h gnm_api.h
+
+obj:	$(OBJ)
 
 clean:
-	$(RM) *.o $(O_OBJ)
+	$(RM) *.o $(OBJ)
+	(cd analysis; $(MAKE) clean)
 
-docs:	
+docs:
 	(cd ..; $(MAKE) docs)
-
-#gdal_misc.$(OBJ_EXT):	gdal_misc.cpp gdal_version.h
 
 install:
 	for f in *.h ; do $(INSTALL_DATA) $$f $(DESTDIR)$(INST_INCLUDE) ; done
-
-

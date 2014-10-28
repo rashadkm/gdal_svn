@@ -30,26 +30,36 @@ set(LIB_NAME "gnm")
 project ("lib${LIB_NAME}")
 
 include_directories(${GDAL_ROOT_SOURCE_DIR}/gnm)
+include_directories(${GDAL_ROOT_SOURCE_DIR}/gnm/analysis)
 include_directories(${GDAL_ROOT_SOURCE_DIR}/ogr/ogrsf_frmts)
 include_directories(${GDAL_ROOT_SOURCE_DIR}/ogr)
 include_directories(${GDAL_ROOT_SOURCE_DIR}/gcore)
 
+option(GDAL_BUILD_NETWORK_SUPPORT "Set ON to build geography network support" ON)
+if(GDAL_BUILD_NETWORK_SUPPORT)
+
 set(LIB_INST_HEADERS #${LIB_INST_HEADERS} #user api
   gnm.h
-#PARENT_SCOPE
+  frmts/gnm_frmts.h #this must be included by users
+  gnm_api.h
+  analysis/gnmstdanalysis.h
 )
 
 set(LIB_HHEADERS ${LIB_INST_HEADERS} #all .h
-  #gnm_core.h
+  #...
 )
 
 set(LIB_CSOURCES
     gnmmanager.cpp
-	gnmconnectivity.cpp
+    gnmnetwork.cpp
+    gnmgdalnetwork.cpp
+    gnmgdalrule.cpp
+    analysis/gnmstdanalysis.cpp
 )
 
 
 set(GDAL_TARGET_OBJECTS ${GDAL_TARGET_OBJECTS} $<TARGET_OBJECTS:${LIB_NAME}> PARENT_SCOPE)
 add_library(${LIB_NAME} OBJECT ${LIB_HHEADERS} ${LIB_CSOURCES})
 
+endif()
 

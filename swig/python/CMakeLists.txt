@@ -91,6 +91,8 @@ if(PYTHONLIBS_FOUND)
         include_directories(${GDAL_ROOT_SOURCE_DIR}/ogr)
         include_directories(${GDAL_ROOT_SOURCE_DIR}/ogr/ogrsf_frmts)
         include_directories(${GDAL_ROOT_SOURCE_DIR}/alg)
+		include_directories(${GDAL_ROOT_SOURCE_DIR}/gnm)
+		include_directories(${GDAL_ROOT_SOURCE_DIR}/gnm/frmts)
         
         execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${GDAL_ROOT_BINARY_DIR}/swig/include)   
         execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/${SWIGOUTPUTDIR} )
@@ -98,12 +100,12 @@ if(PYTHONLIBS_FOUND)
         set(PYTHON_SWIG_INCLUDE "")
         set(PYTHON_SWIG_LIBRARY "")
         if(UNIX)
-            set(PYTHON_SWIG_INCLUDE ${GDAL_ROOT_SOURCE_DIR}/port:${GDAL_ROOT_BINARY_DIR}/port:${GDAL_ROOT_SOURCE_DIR}/gcore:${GDAL_ROOT_SOURCE_DIR}/alg:${GDAL_ROOT_SOURCE_DIR}/ogr/)
+            set(PYTHON_SWIG_INCLUDE ${GDAL_ROOT_SOURCE_DIR}/port:${GDAL_ROOT_BINARY_DIR}/port:${GDAL_ROOT_SOURCE_DIR}/gcore:${GDAL_ROOT_SOURCE_DIR}/alg:${GDAL_ROOT_SOURCE_DIR}/ogr:${GDAL_ROOT_SOURCE_DIR}/ogr/ogrsf_frmts:${GDAL_ROOT_SOURCE_DIR}/gnm:${GDAL_ROOT_SOURCE_DIR}/gnm/frmts)
             set(PYTHON_SWIG_LIBRARY "../../.libs:../../")
         endif()
         
         if(WIN32)
-            set(PYTHON_SWIG_INCLUDE ${GDAL_ROOT_SOURCE_DIR}/port ${GDAL_ROOT_BINARY_DIR}/port ${GDAL_ROOT_SOURCE_DIR}/gcore ${GDAL_ROOT_SOURCE_DIR}/alg ${GDAL_ROOT_SOURCE_DIR}/ogr )
+            set(PYTHON_SWIG_INCLUDE ${GDAL_ROOT_SOURCE_DIR}/port ${GDAL_ROOT_BINARY_DIR}/port ${GDAL_ROOT_SOURCE_DIR}/gcore ${GDAL_ROOT_SOURCE_DIR}/alg ${GDAL_ROOT_SOURCE_DIR}/ogr ${GDAL_ROOT_SOURCE_DIR}/ogr/ogrsf_frmts ${GDAL_ROOT_SOURCE_DIR}/gnm ${GDAL_ROOT_SOURCE_DIR}/gnm/frmts)
             set(PYTHON_SWIG_LIBRARY "../../.libs:../../")
         endif()
         
@@ -177,6 +179,18 @@ if(PYTHONLIBS_FOUND)
         )
         swig_link_libraries(gdal_array_wrap ${PYTHON_LIBRARIES} ${GDAL_LIB_NAME})   
         
+        set(GDAL_WRAP_INTERFACE_FILES
+        ../include/gnm.i 
+        ../include/${BINDING}/gnm_${BINDING}.i 
+        ../include/${BINDING}/typemaps_${BINDING}.i    
+        )
+        set_source_files_properties(${GDAL_WRAP_INTERFACE_FILES}  PROPERTIES CPLUSPLUS ON)    
+        set_source_files_properties(${GDAL_WRAP_INTERFACE_FILES} PROPERTIES SWIG_FLAGS "-includeall")
+        swig_add_module(gnm_wrap ${BINDING}
+            ../include/gnm.i 
+        )
+        swig_link_libraries(gnm_wrap ${PYTHON_LIBRARIES} ${GDAL_LIB_NAME})
+                
         set(VC_DIR "")
         if(MSVC)
             if(EXISTS "$ENV{VS100COMNTOOLS}../../VC") 
@@ -206,6 +220,7 @@ if(PYTHONLIBS_FOUND)
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PYTHONSWIG_H_PATH}/gdalPYTHON_wrap.cxx" "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/${SWIGOUTPUTDIR}/gdal_wrap.cpp"  
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PYTHONSWIG_H_PATH}/ogrPYTHON_wrap.cxx" "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/${SWIGOUTPUTDIR}/ogr_wrap.cpp"  
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PYTHONSWIG_H_PATH}/osrPYTHON_wrap.cxx" "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/${SWIGOUTPUTDIR}/osr_wrap.cpp"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PYTHONSWIG_H_PATH}/gnmPYTHON_wrap.cxx" "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/${SWIGOUTPUTDIR}/gnm_wrap.cpp"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GDAL_ROOT_SOURCE_DIR}/swig/${BINDING}/README.txt" "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/README.txt"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GDAL_ROOT_SOURCE_DIR}/swig/${BINDING}/gdalnumeric.py" "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/gdalnumeric.py" 
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GDAL_ROOT_SOURCE_DIR}/swig/${BINDING}/osgeo/gdalnumeric.py" "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/osgeo/gdalnumeric.py" 
@@ -213,12 +228,13 @@ if(PYTHONLIBS_FOUND)
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/gdalconst.py" "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/osgeo/gdalconst.py"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/ogr.py" "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/osgeo/ogr.py"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/osr.py" "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/osgeo/osr.py"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/gnm.py" "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/osgeo/gnm.py"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GDAL_ROOT_SOURCE_DIR}/swig/${BINDING}/osgeo/__init__.py" "${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/osgeo/__init__.py"
 
             COMMAND set VS90COMNTOOLS=${VC_DIR}
             COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/setup.py" "build" 
             WORKING_DIRECTORY  ${GDAL_ROOT_BINARY_DIR}/swig/${BINDING}/
-            DEPENDS _gdal_wrap _gdalconst_wrap _ogr_wrap _osr_wrap _gdal_array_wrap 
+            DEPENDS _gdal_wrap _gdalconst_wrap _ogr_wrap _osr_wrap _gdal_array_wrap _gnm_wrap
         )
 
         
