@@ -1,0 +1,79 @@
+/*! \page gnm_arch GNM Architecture
+
+This document is intended to describe the purpose and the structure of Geographic Network Model classes. GNM is the part of GDAL and provides the methods of creating, managing and analysing geographical networks.<p>
+
+The key purpose of GNM classes:<p>
+<ul>
+<li> To provide an abstraction for different existed network formats, like GDAL (previously OGR) provides one for spatial vector formats;<p>
+<li> To provide a network functionality to those spatial formats which does not have it at all.<p>
+</ul>
+
+\section gnm_arch_abstract Abstract network
+
+The input data for any network is data of different spatial vector formats, supported by GDAL – i.e. GDAL dataset. According to the concept any dataset can have the special set of layers and fields which  holds the network's data, for example network's topology (graph) and network's metadata (format information, name, description, etc). So the connectivity is a set of network's data inside the dataset and the network  is a resulting dataset with the connectivity. <p>
+
+<b>Manager</b>: GNMManager is a static class that provides the set of core methods of managing networks: create, open, remove the connectivities and the whole networks.<p>
+
+<b>Network</b>: GNMNetwork represents a network and aggregates a GDALDataset instance (not inherits it). The network data and spatial/attribute in fact are not separable (just additional layers or fields), while the GNMNetwork "knows" which data from the dataset refers to network data and operates it. <p>
+
+What is generalized for networks and implemented as an interface in GNMNetwork:<p>
+<ul>
+<li> Setting/unsetting connections. The generic methods of building the network topology (automatically and manually) get the identificators of features being connected in a common way, while the concrete network format knows where and how to store and build the topology;<p>
+<li> Reading connections. The generic methods return the connections in the common way;<p>
+<li> Adding/removing layers/features. When the feature or layer is being added to the network some actions can be initiated (changing weights in a graph, cascade changes in connected features). Concrete network format describes how it is done.<p>
+<li> Setting network's business logic/behavior. It can be expressed in network rules or constraints/restrictions. Expected that each rule can be set from a string and each concrete format will transform it to the internal look.<p>
+</ul>
+
+<b>Format</b>: GNMFormat manages the concrete GNMNetwork. Each GNMNetwork implementation must have the GNMFormat pair. This approach is close to GDALDriver-GDALDataset concept and implemented with the «Factory method» pattern, where the GNMFormat is abstract “factory” and GNMNetwork is an abstract “product”. Each concrete implementation of GNMFormat must “know” how to create connectivity over a dataset of the concrete format, how to remove it, how to open and close the resulting networks and is used by GNMManager. Currently there are no network formats implementing in GNM, but the following can be implemented in future: PostGIS pgRouting, SpatiaLite VirtualNetwork, Oracle Spatial Networks, etc.<p>
+
+\section gnm_arch_gdalnetwork GDAL network
+
+<b>GdalNetwork</b>: GNMGdalNetwork is a concrete implementation of the GNMNetwork. Unlike other possible GNMNetwork subclasses GNMGdalNetwork does not have according GNMFormat class because it is used by GNMManager by default, when the special network format is undefined or does not exist. The purpose of GNMGdalNetwork is to provide the network functionality to many GDAL-supported dataset drivers and especially which do not have the according network formats (for example Shapefile, contrary to PostGIS which has pgRouting). GNMGdalNetwork intends to support the most GDAL dataset formats (currently actually only several). Technically the format abstraction is achieved with the help of GDAL abstraction: dataset and layers. Thus, the connectivity in GDAL-network format is represented as a set of system layers (wkbNone geometry, specific attribute fields). The spatial data regarded as the set of class layers (OGR layers with geometry and attributes, as usual). <p>
+
+The way of describing real-world networks intends to be a generic, because:<p>
+<ul>
+<li> The most general type of graph is used, which holds every useful information: directions of edges (directed/undirected), edge costs (weighted/unweighted). This graph is stored in according system layer as an incidence list: source vertex feature id, target vertex feature id, edge feature id, direct cost, inverse cost, direction of edge;<p>
+<li> Any feature with any geometry can be the vertex or the edge in a graph. Also, it may be no feature “under” the connection's edge at all (actually the system edge is created for this case). All this means that user operates with the feature identificators, while the GNMGdalNetwork guaranties the connections integrity among features; <p>
+<li> Any feature has the unique identifier – Global Feature Identifier (GFID) which allows unify any amount of layers under one network;<p>
+<li> The concept of rules provides the following way of defining the network's business logic (the following strings can be passed to the according method). All rules are declarative and make an effect to the network when they exist. 
+    <ul>	
+    <li> CLASS Class1 COSTS Field1   // Defines the field from which the cost of the feature of this layer will be extracted during the connection.<p>
+	<li> CLASS Class1 INVCOSTS Field1   // Same for inverse cost.<p>
+	<li> CLASS Class1 DIRECTS Field2   // Same for direction.<p>
+	<li> CLASS Class1 BEHAVES role_string   // Set some role to the whole class which can be used for analysis.<p>
+	<li> NETWORK CONNECTS Class1 WITH Class2 [VIA Class3]   // Defines which class can be connected with which one, and (optional) which class can serve as connector in such connection. <p>
+    </ul>
+If no rules are set for classes the defaults are used: for costs the user input is used and the connection are always allowed.<p>
+</ul>
+
+See the GNMGdalNetwork methods for more details.<p>
+
+The GNMGdalNetwork network has also some features:<p>
+<ul>
+<li> The single spatial reference system is used in the network, that means that each feature which appears in the network will be transformed to this SRS;<p>
+<li> The network always created void and there is a need to import or create features;<p>
+<li> It is not possible to remove the connectivity from the dataset – only delete the whole network with all data. The deletion is made layer by layer and deletes only system and class layers which registered in the network.<p>
+</ul>
+
+\section gnm_arch_analysis Analysis
+
+The network analysis in GNM is implemented as the set of separate “analyser” classes and intends to be widen in future. Any analyser class is the combination of the specific graph representation, which is good for the specific package of analysis and the analysing methods themselves. The input data for any analyser is the GNMNetwork object.<p>
+
+So each GNM_X_Analyser class must have:<p>
+<ul>
+<li> The inner graph representation;<p>
+<li> The method of preparing the inner graph representation from the GNMNetwork's network;<p>
+<li> The set of analysing methods.<p>
+</ul>
+
+Currently there is one analyser (with its subclasses) in GNM: <p>
+
+<b>GNMStdAnalyser</b> holds the graph in memory in STL containers and provides two basic algorithms: Dijkstra shortest path tree search and connected components search (based on Breadth-first search).<p>
+
+<b>GNMGdalStdAnalyser</b> is a sublass of GNMStdAnalyser and intends to work with GNMGdalNetwork networks.<p>
+
+<b>GNMGdalStdRoutingAnalyser</b> is a subclass of GNMGdalStdAnalyser and intends to have a routing capabilities (~ for road networks).<p>
+
+<b>GNMGdalStdCommutationsAnalyser</b> is a subclass of GNMGdalStdAnalyser and intends to have commutations analysis capabilities (~ for engineering networks).<p>
+
+*/
