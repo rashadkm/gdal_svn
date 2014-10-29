@@ -38,6 +38,7 @@
 #include "minidriver_tms.h"
 #include "minidriver_tiled_wms.h"
 #include "minidriver_virtualearth.h"
+#include "minidriver_arcgis_server.h"
 
 /************************************************************************/
 /*              GDALWMSDatasetGetConfigFromURL()                        */
@@ -674,6 +675,11 @@ int GDALWMSDataset::Identify(GDALOpenInfo *poOpenInfo)
     {
         return TRUE;
     }
+	else if (poOpenInfo->nHeaderBytes == 0 &&
+              EQUALN(pszFilename, "AGS:", 4))
+    {
+        return TRUE;
+    }
     else
         return FALSE;
 }
@@ -801,6 +807,12 @@ GDALDataset *GDALWMSDataset::Open(GDALOpenInfo *poOpenInfo)
         CPLDestroyXMLNode( psXML );
         return poRet;
     }
+	else if (poOpenInfo->nHeaderBytes == 0 &&
+              EQUALN(pszFilename, "AGS:", 4))
+    {
+		//TODO
+		return NULL;
+    }
     else
         return NULL;
     if (config == NULL) return NULL;
@@ -915,5 +927,6 @@ void GDALRegister_WMS() {
         mdm->Register(new GDALWMSMiniDriverFactory_TMS());
         mdm->Register(new GDALWMSMiniDriverFactory_TiledWMS());
         mdm->Register(new GDALWMSMiniDriverFactory_VirtualEarth());
+		mdm->Register(new GDALWMSMiniDriverFactory_AGS());
     }
 }
