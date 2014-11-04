@@ -47,7 +47,7 @@ namespace
 		size_t iMin = 0;
 		size_t iSec = 0;
 
-		int r = sscanf ( rsAcqisitionTime.c_str(), "%4d%2d%2d %d:%d:%d.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+		int r = sscanf ( rsAcqisitionTime.c_str(), "%4lu%2lu%2lu %lu:%lu:%lu.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
 
 		// For Img_SceneCenterDateTime r = 20090428 07:53:50.116 
 		// For Lbi_ObservationDate r = 3 (20100815)

@@ -45,7 +45,7 @@ namespace
 		size_t iMin;
 		size_t iSec;
 
-		int r = sscanf ( rsAcqisitionTime.c_str(), "%d-%d-%d %d:%d:%d.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+		int r = sscanf ( rsAcqisitionTime.c_str(), "%lu-%lu-%lu %lu:%lu:%lu.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
 		if (r != 6)
 			return -1;
 		
