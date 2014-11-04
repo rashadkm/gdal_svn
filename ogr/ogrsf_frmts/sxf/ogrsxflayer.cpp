@@ -59,7 +59,7 @@ OGRSXFLayer::OGRSXFLayer(VSILFILE* fp, void** hIOMutex, GByte nID, const char* p
     poFeatureDefn = new OGRFeatureDefn(pszLayerName);
     SetDescription( poFeatureDefn->GetName() );
     poFeatureDefn->Reference();
-
+    
     poFeatureDefn->SetGeomType(wkbUnknown);
     if (poFeatureDefn->GetGeomFieldCount() != 0)
         poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(stSXFMapDescription.pSpatRef);
@@ -235,7 +235,7 @@ int OGRSXFLayer::AddRecord(long nFID, unsigned nClassCode, vsi_l_offset nOffset,
                             oField.SetWidth(255);
                             poFeatureDefn->AddFieldDefn(&oField);
                         }
-                        unsigned nLen = unsigned(stAttrInfo.nScale) + 1;
+                        unsigned nLen = (unsigned(stAttrInfo.nScale) + 1) * 2;
                         offset += nLen;
                         nCurrOff = nLen;
                         break;
@@ -617,8 +617,9 @@ OGRFeature *OGRSXFLayer::GetNextRawFeature(long nFID)
         return NULL;
     }
 
-    SXFGeometryType eGeomType;
-    GByte code;
+    SXFGeometryType eGeomType = SXF_GT_Unknown;
+    GByte code = 0;
+
     if (m_nSXFFormatVer == 3)
     {
         if (CHECK_BIT(stRecordHeader.nRef[2], 3))
@@ -692,6 +693,7 @@ OGRFeature *OGRSXFLayer::GetNextRawFeature(long nFID)
         eGeomType = SXF_GT_VectorAngle;
     else if (code == 0x22)
         eGeomType = SXF_GT_VectorScaled;
+
     bool bHasAttributes = CHECK_BIT(stRecordHeader.nRef[1], 1);
     bool bHasRefVector = CHECK_BIT(stRecordHeader.nRef[1], 3);
     if (bHasRefVector == true)
@@ -709,7 +711,7 @@ OGRFeature *OGRSXFLayer::GetNextRawFeature(long nFID)
     }
     stCertInfo.nSubObjectCount = stRecordHeader.nSubObjectCount;
 
-    bool bFloatType, bBigType;
+    bool bFloatType = 0, bBigType = 0;
     bool b3D(true);
     if (m_nSXFFormatVer == 3)
     {
@@ -725,6 +727,7 @@ OGRFeature *OGRSXFLayer::GetNextRawFeature(long nFID)
         bBigType = CHECK_BIT(stRecordHeader.nRef[1], 2);
         stCertInfo.bHasTextSign = CHECK_BIT(stRecordHeader.nRef[2], 3);
     }
+    // Else trouble.
 
     if (b3D) //xххххх1х
         stCertInfo.bDim = 1;
@@ -985,12 +988,12 @@ OGRFeature *OGRSXFLayer::GetNextRawFeature(long nFID)
                         break;
                     }
                     char* value = (char*)CPLMalloc(nLen);
-                    memcpy(value, psSemanticsdBuf + offset, nLen);
+                    memcpy(value, psSemanticsdBuf + offset, nLen - 2);
                     value[nLen-1] = 0;
                     value[nLen-2] = 0;
                     char* dst = (char*)CPLMalloc(nLen);
                     int nCount = 0;
-                    for(int i = 0; i < nLen; i += 2)
+                    for(int i = 0; (unsigned)i < nLen; i += 2)
                     {
                          unsigned char ucs = value[i];
 
@@ -1369,8 +1372,8 @@ OGRFeature *OGRSXFLayer::TranslatePolygon(const SXFRecordDescription& certifInfo
     delete poLS;
 
 /*****
- * TODO :
- *          - Translate graphics
+ * TODO : 
+ *          - Translate graphics 
  *          - Translate 3D vector
  */
     return poFeature;
@@ -1386,18 +1389,18 @@ OGRFeature *OGRSXFLayer::TranslateText(const SXFRecordDescription& certifInfo,
     double dfY = 1.0;
     GUInt32 nOffset = 0;
     GUInt32 count;
-    //OGRFeatureDefn *fd = poFeatureDefn->Clone();
-    //fd->SetGeomType( wkbLineString );
+	//OGRFeatureDefn *fd = poFeatureDefn->Clone();
+	//fd->SetGeomType( wkbLineString );
  //   OGRFeature *poFeature = new OGRFeature(fd);
 
     OGRFeature *poFeature = new OGRFeature(poFeatureDefn);
     OGRLineString* poLS = new OGRLineString();
 
     if (certifInfo.bDim == 1) // TODO realise this
-    {
-            CPLError( CE_Failure, CPLE_NotSupported,
-                    "SXF. 3D metrics do not support." );
-    }
+	{
+			CPLError( CE_Failure, CPLE_NotSupported, 
+					"SXF. 3D metrics do not support." );
+	}
 
     for(count=0 ; count <  certifInfo.nPointCount ; count++)
     {
@@ -1429,14 +1432,14 @@ OGRFeature *OGRSXFLayer::TranslateText(const SXFRecordDescription& certifInfo,
 
         //TODO: Check encoding from sxf
         poFeature->SetField("TEXT", pszTextBuf);
-
+ 
         CPLFree( pszTextBuf );
     }
 
 
 /*****
- * TODO :
- *          - Translate graphics
+ * TODO : 
+ *          - Translate graphics 
  *          - Translate 3D vector
  */
 

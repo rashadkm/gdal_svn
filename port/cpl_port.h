@@ -294,7 +294,7 @@ typedef unsigned long    GUIntBig;
 #endif
 
 /* TODO : support for other compilers needed */
-#if defined(__GNUC__) || defined(_MSC_VER)
+#if (defined(__GNUC__) && !defined(__NO_INLINE__)) || defined(_MSC_VER)
 #define HAS_CPL_INLINE  1
 #define CPL_INLINE __inline
 #elif defined(__SUNPRO_CC)
@@ -572,6 +572,13 @@ static char *cvsid_aw() { return( cvsid_aw() ? ((char *) NULL) : cpl_cvsid ); }
 #define CPL_WARN_UNUSED_RESULT                        __attribute__((warn_unused_result))
 #else
 #define CPL_WARN_UNUSED_RESULT
+#endif
+
+#if defined(__GNUC__) && __GNUC__ >= 4
+#  define CPL_UNUSED __attribute((__unused__))
+#else
+/* TODO: add cases for other compilers */
+#  define CPL_UNUSED
 #endif
 
 #if defined(__GNUC__) && __GNUC__ >= 3 && !defined(DOXYGEN_SKIP)
