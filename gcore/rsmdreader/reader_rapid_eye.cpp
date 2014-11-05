@@ -46,7 +46,7 @@ namespace
 		size_t iMin;
 		size_t iSec;
 
-		int r = sscanf ( rsAcqisitionTime.c_str(), "%d-%d-%dT%d:%d:%d.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+		int r = sscanf ( rsAcqisitionTime, "%ul-%ul-%ulT%ul:%ul:%ul.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
 		if (r != 6)
 			return -1;
 		
@@ -59,7 +59,7 @@ namespace
 		tmDateTime.tm_year = iYear - 1900;
 
 		char buffer [80];
-		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		/*size_t dCharsCount = */strftime (buffer,80,AcquisitionDateTimeFormat,&tmDateTime);
 		rsAcqisitionTimeFormatted.assign(&buffer[0]);
 
 		return mktime(&tmDateTime);
@@ -72,14 +72,13 @@ RapidEye::RapidEye(const char* pszFilename)
 	CPLString osDirName = CPLGetDirname(pszFilename);
 	CPLString osBaseName = CPLGetBasename(pszFilename);
 
-	osIMDSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("%s_metadata", osBaseName.c_str()), ".xml" );
+	osIMDSourceFilename = CPLFormFilename( osDirName, CPLSPrintf("%s_metadata", osBaseName.c_str()), ".xml" );
 
-	VSIStatBufL sStatBuf;
-	if( VSIStatExL( osIMDSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
+    if (!CPLCheckForFile((char*)osIMDSourceFilename.c_str(), NULL))
     {
-		osIMDSourceFilename = "";
+        osIMDSourceFilename.clear();
 	}
-};
+}
 
 const bool RapidEye::IsFullCompliense() const
 {
@@ -95,7 +94,7 @@ void RapidEye::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 {
 	if(!osIMDSourceFilename.empty())
 	{
-		CPLXMLNode* psNode = CPLParseXMLFile(osIMDSourceFilename.c_str());
+		CPLXMLNode* psNode = CPLParseXMLFile(osIMDSourceFilename);
 		if(psNode == NULL)
 			return;
 
@@ -115,7 +114,7 @@ void RapidEye::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLString
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), 
 			"gml:using.eop:EarthObservationEquipment.eop:platform.eop:Platform.eop:serialIdentifier");
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId, SatelliteIdValue);
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), 
@@ -123,7 +122,7 @@ void RapidEye::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLString
 	{
 		CPLString CloudCover = CSLFetchNameValue(szrImageMetadata.List(), 
 			"gml:resultOf.re:EarthObservationResult.opt:cloudCoverPercentage");
-		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), CloudCover.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_CloudCover, CloudCover);
 	}
 	
 	if( CSLFindName(szrImageMetadata.List(), 
@@ -132,7 +131,7 @@ void RapidEye::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLString
 		CPLString AcqisitionDateTime;
 		GetAcqisitionTimeFromString( CSLFetchNameValue(szrImageMetadata.List(), 
 			"gml:using.eop:EarthObservationEquipment.eop:acquisitionParameters.re:Acquisition.re:acquisitionDateTime"), AcqisitionDateTime);
-		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), AcqisitionDateTime.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, AcqisitionDateTime);
 	}
 }
 
@@ -144,9 +143,9 @@ void RapidEye::ReadRPC(RSMDRPC& rRPC) const
 const CPLStringList RapidEye::DefineSourceFiles() const
 {
 	CPLStringList papszFileList;
-	if(osIMDSourceFilename != "")
+	if(!osIMDSourceFilename.empty())
 	{
-		papszFileList.AddString(osIMDSourceFilename.c_str());
+		papszFileList.AddString(osIMDSourceFilename);
 	}
 
 	return papszFileList;

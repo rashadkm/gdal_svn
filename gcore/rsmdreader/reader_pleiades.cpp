@@ -45,7 +45,7 @@ namespace
 		size_t iMin;
 		size_t iSec;
 
-		int r = sscanf ( rsAcqisitionTime.c_str(), "%d-%d-%d %d:%d:%d.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+		int r = sscanf ( rsAcqisitionTime, "%ul-%ul-%ul %ul:%ul:%ul.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
 		if (r != 6)
 			return -1;
 		
@@ -58,7 +58,7 @@ namespace
 		tmDateTime.tm_year = iYear - 1900;
 
 		char buffer [80];
-		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		/*size_t dCharsCount = */strftime (buffer,80,AcquisitionDateTimeFormat,&tmDateTime);
 		rsAcqisitionTimeFormatted.assign(&buffer[0]);
 
 		return mktime(&tmDateTime);
@@ -72,19 +72,19 @@ Pleiades::Pleiades(const char* pszFilename)
 	CPLString osBaseName = CPLGetBasename(pszFilename);
 	osBaseName.replace(0,4,"");
 
-	osXMLIMDSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("DIM_%s", osBaseName.c_str()), ".XML" );
-	osXMLRPCSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("RPC_%s", osBaseName.c_str()), ".XML" );
+	osXMLIMDSourceFilename = CPLFormFilename( osDirName, CPLSPrintf("DIM_%s", osBaseName.c_str()), ".XML" );
+	osXMLRPCSourceFilename = CPLFormFilename( osDirName, CPLSPrintf("RPC_%s", osBaseName.c_str()), ".XML" );
 
-	VSIStatBufL sStatBuf;
-	if( VSIStatExL( osXMLIMDSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
+	if (!CPLCheckForFile((char*)osXMLIMDSourceFilename.c_str(), NULL))
     {
-		osXMLIMDSourceFilename = "";
+        osXMLIMDSourceFilename.clear();
 	}
-	if( VSIStatExL( osXMLRPCSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
+	
+    if (!CPLCheckForFile((char*)osXMLRPCSourceFilename.c_str(), NULL))
     {
-		osXMLRPCSourceFilename = "";
+        osXMLRPCSourceFilename.clear();
 	}
-};
+}
 
 const bool Pleiades::IsFullCompliense() const
 {
@@ -106,7 +106,7 @@ void Pleiades::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
 	
 	if(!osXMLIMDSourceFilename.empty())
 	{
-		CPLXMLNode* psNode = CPLParseXMLFile(osXMLIMDSourceFilename.c_str());
+		CPLXMLNode* psNode = CPLParseXMLFile(osXMLIMDSourceFilename);
 		if(psNode == NULL)
 			return;
 
@@ -129,7 +129,7 @@ void Pleiades::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLString
 		CPLString SatelliteIdValue = CPLSPrintf( "%s.%s",
 			CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.MISSION"),
 			CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.MISSION_INDEX") );
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId, SatelliteIdValue);
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.IMAGING_DATE") != -1 &&
@@ -139,7 +139,7 @@ void Pleiades::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLString
 		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Identification.Strip_Source.IMAGING_DATE");
 		CPLString AcqisitionDateTime;
 		GetAcqisitionTimeFromString( osAcqisitionDate + " " + osAcqisitionTime, AcqisitionDateTime);
-		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), AcqisitionDateTime.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, AcqisitionDateTime);
 	}
 
 
@@ -155,7 +155,7 @@ void Pleiades::ReadRPCFromXML(RSMDRPC& rRPC) const
 	CPLStringList szrRPC;
 	if(!osXMLRPCSourceFilename.empty())
 	{
-		CPLXMLNode* psNode = CPLParseXMLFile(osXMLRPCSourceFilename.c_str());
+		CPLXMLNode* psNode = CPLParseXMLFile(osXMLRPCSourceFilename);
 		if(psNode == NULL)
 			return;
 
@@ -212,49 +212,49 @@ void Pleiades::ReadRPCFromXML(RSMDRPC& rRPC) const
 	for(int i = 1; i < 21; ++i)
 	{
 		CPLString coefName = CPLString().Printf("Direct_Model.LINE_NUM_COEFF_%d",i);
-		const char* szpCoef = szrRPC.FetchNameValue(coefName.c_str());
+		const char* szpCoef = szrRPC.FetchNameValue(coefName);
 		if (szpCoef != NULL)
 			 lineNumCoef = lineNumCoef + " " + CPLString(szpCoef);
 		else
 			return;
 	}
-	rRPC.lineNumCoef = lineNumCoef.c_str();
+	rRPC.lineNumCoef = lineNumCoef;
 	
 	CPLString lineDenCoef;
 	for(int i = 1; i < 21; ++i)
 	{
 		CPLString coefName = CPLString().Printf("Direct_Model.LINE_DEN_COEFF_%d",i);
-		const char* szpCoef = szrRPC.FetchNameValue(coefName.c_str());
+		const char* szpCoef = szrRPC.FetchNameValue(coefName);
 		if (szpCoef != NULL)
 			 lineDenCoef = lineDenCoef + " " + CPLString(szpCoef);
 		else
 			return;
 	}
-	rRPC.lineDenCoef = lineDenCoef.c_str();
+	rRPC.lineDenCoef = lineDenCoef;
 
 	CPLString sampNumCoef;
 	for(int i = 1; i < 21; ++i)
 	{
 		CPLString coefName = CPLString().Printf("Direct_Model.SAMP_NUM_COEFF_%d",i);
-		const char* szpCoef = szrRPC.FetchNameValue(coefName.c_str());
+		const char* szpCoef = szrRPC.FetchNameValue(coefName);
 		if (szpCoef != NULL)
 			 sampNumCoef = sampNumCoef + " " + CPLString(szpCoef);
 		else
 			return;
 	}
-	rRPC.sampNumCoef = sampNumCoef.c_str();
+	rRPC.sampNumCoef = sampNumCoef;
 
 	CPLString sampDenCoef;
 	for(int i = 1; i < 21; ++i)
 	{
 		CPLString coefName = CPLString().Printf("Direct_Model.SAMP_DEN_COEFF_%d",i);
-		const char* szpCoef = szrRPC.FetchNameValue(coefName.c_str());
+		const char* szpCoef = szrRPC.FetchNameValue(coefName);
 		if (szpCoef != NULL)
 			 sampDenCoef = sampDenCoef + " " + CPLString(szpCoef);
 		else
 			return;
 	}
-	rRPC.sampDenCoef = sampDenCoef.c_str();
+	rRPC.sampDenCoef = sampDenCoef;
 }
 
 const CPLStringList Pleiades::DefineSourceFiles() const
@@ -262,11 +262,11 @@ const CPLStringList Pleiades::DefineSourceFiles() const
 	CPLStringList papszFileList;
 	if(!osXMLIMDSourceFilename.empty())
 	{
-		papszFileList.AddString(osXMLIMDSourceFilename.c_str());
+		papszFileList.AddString(osXMLIMDSourceFilename);
 	}
 	if(!osXMLRPCSourceFilename.empty())
 	{
-		papszFileList.AddString(osXMLRPCSourceFilename.c_str());
+		papszFileList.AddString(osXMLRPCSourceFilename);
 	}
 	return papszFileList;
 }

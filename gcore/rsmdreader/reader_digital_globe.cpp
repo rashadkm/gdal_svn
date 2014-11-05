@@ -45,7 +45,7 @@ namespace
 		size_t iMin;
 		size_t iSec;
 
-		int r = sscanf ( rsAcqisitionTime.c_str(), "%d-%d-%dT%d:%d:%d.%*dZ", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+		int r = sscanf ( rsAcqisitionTime, "%ul-%ul-%ulT%ul:%ul:%ul.%*ulZ", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
 
 		if (r != 6)
 			return -1;
@@ -59,7 +59,7 @@ namespace
 		tmDateTime.tm_year = iYear - 1900;
 
 		char buffer [80];
-		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		/*size_t dCharsCount = */strftime (buffer,80,AcquisitionDateTimeFormat,&tmDateTime);
 		rsAcqisitionTimeFormatted.assign(&buffer[0]);
 
 		return mktime(&tmDateTime);
@@ -75,7 +75,7 @@ namespace
 		time_t timeMid = timeStart + (timeEnd - timeStart)/2;
 
 		char buffer [80];
-		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(), localtime(&timeMid));
+		/*size_t dCharsCount = */strftime (buffer,80,AcquisitionDateTimeFormat, localtime(&timeMid));
 		osAcqisitionTime.assign(&buffer[0]);
 
 		return true;
@@ -95,7 +95,7 @@ DigitalGlobe::DigitalGlobe(const char* pszFilename)
 		if( IsXMLValid(osFilename) )
 			osXMLSourceFilename = osFilename;
 	}
-};
+}
 
 const bool DigitalGlobe::IsFullCompliense() const
 {
@@ -123,7 +123,7 @@ void DigitalGlobe::ReadImageMetadataFromWKT(CPLStringList& szrImageMetadata) con
 {
 	if (osIMDSourceFilename != "")
 	{
-		char **papszIMDMD = GDALLoadIMDFile( osIMDSourceFilename.c_str(), NULL );
+		char **papszIMDMD = GDALLoadIMDFile( osIMDSourceFilename, NULL );
 
 		if( papszIMDMD != NULL )
         {
@@ -139,7 +139,7 @@ void DigitalGlobe::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) con
 {
 	if(osXMLSourceFilename != "")
 	{
-		CPLXMLNode* psNode = CPLParseXMLFile(osXMLSourceFilename.c_str());
+		CPLXMLNode* psNode = CPLParseXMLFile(osXMLSourceFilename);
 		if(psNode == NULL)
 		{
 			return;
@@ -209,7 +209,7 @@ void DigitalGlobe::ReadRPCFromWKT(RSMDRPC& rRPC) const
 	CPLStringList szrRPC;
 	if (osRPBSourceFilename != "")
 	{
-		char **papszRPCMD = GDALLoadRPBFile( osRPBSourceFilename.c_str(), NULL );
+		char **papszRPCMD = GDALLoadRPBFile( osRPBSourceFilename, NULL );
 
 		if( papszRPCMD != NULL )
         {
@@ -280,7 +280,7 @@ void DigitalGlobe::ReadRPCFromXML(RSMDRPC& rRPC) const
 	CPLStringList szrRPC;
 	if(osXMLSourceFilename != "")
 	{
-		CPLXMLNode* psNode = CPLParseXMLFile(osXMLSourceFilename.c_str());
+		CPLXMLNode* psNode = CPLParseXMLFile(osXMLSourceFilename);
 		if(psNode == NULL)
 			return;
 
@@ -356,20 +356,20 @@ const CPLStringList DigitalGlobe::DefineSourceFiles() const
 
 	if(osIMDSourceFilename != "" && osRPBSourceFilename != "")
 	{
-		papszFileList.AddString(osIMDSourceFilename.c_str());
-		papszFileList.AddString(osRPBSourceFilename.c_str());
+		papszFileList.AddString(osIMDSourceFilename);
+		papszFileList.AddString(osRPBSourceFilename);
 	}
 	else if(osXMLSourceFilename != "")
-		papszFileList.AddString(osXMLSourceFilename.c_str());
+		papszFileList.AddString(osXMLSourceFilename);
 
 	return papszFileList;
 }
 
 bool DigitalGlobe::IsXMLValid(const CPLString& psFilename) const
 {
-	if(psFilename != "")
+	if(!psFilename.empty())
 	{
-		CPLXMLNode* psNode = CPLParseXMLFile(psFilename.c_str());
+		CPLXMLNode* psNode = CPLParseXMLFile(psFilename);
 		if(psNode == NULL)
 		{
 			return false;

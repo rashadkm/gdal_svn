@@ -48,7 +48,7 @@ namespace
             CPLString osLine(papszLines[i]);
             
             char *ppszKey = NULL;				
-			const char* value = CPLParseNameValue(osLine.c_str(), &ppszKey);
+			const char* value = CPLParseNameValue(osLine, &ppszKey);
 
 			oslIMD.AddNameValue(ppszKey, value);
 			
@@ -69,7 +69,7 @@ namespace
 		size_t iMin;
 		size_t iSec;
 
-		int r = sscanf ( rsAcqisitionTime.c_str(), "%d-%d-%dT%d:%d:%d.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+		int r = sscanf ( rsAcqisitionTime, "%ul-%ul-%ulT%ul:%ul:%ul.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
 		if (r != 6)
 			return -1;
 		
@@ -82,7 +82,7 @@ namespace
 		tmDateTime.tm_year = iYear - 1900;
 
 		char buffer [80];
-		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		/*size_t dCharsCount = */strftime (buffer,80,AcquisitionDateTimeFormat,&tmDateTime);
 		rsAcqisitionTimeFormatted.assign(&buffer[0]);
 
 		return mktime(&tmDateTime);
@@ -96,10 +96,9 @@ OrbView::OrbView(const char* pszFilename)
 	
 	CPLString osDirName = CPLGetDirname(pszFilename);
 	CPLString osBaseName = CPLGetBasename(pszFilename);
-	osRPCSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("%s_rpc", osBaseName.c_str()), ".txt" );
+	osRPCSourceFilename = CPLFormFilename( osDirName, CPLSPrintf("%s_rpc", osBaseName.c_str()), ".txt" );
 
-	VSIStatBufL sStatBuf;
-	if( VSIStatExL( osRPCSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
+    if (!CPLCheckForFile((char*)osRPCSourceFilename.c_str(), NULL))
     {
 		osRPCSourceFilename = "";
 	}
@@ -127,7 +126,7 @@ void OrbView::ReadImageMetadataFromWKT(CPLStringList& szrImageMetadata) const
 	{
 		CPLKeywordParser oParser;
 
-		VSILFILE *fp = VSIFOpenL( osIMDSourceFilename.c_str(), "r" );
+		VSILFILE *fp = VSIFOpenL( osIMDSourceFilename, "r" );
 
 		if( fp == NULL )
 			return;
@@ -163,20 +162,20 @@ void OrbView::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringL
 	if( CSLFindName(szrImageMetadata.List(), "sensorInfo.satelliteName") != -1 )
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "sensorInfo.satelliteName");
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), CPLStripQuotes(SatelliteIdValue));
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId, CPLStripQuotes(SatelliteIdValue));
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "productInfo.productCloudCoverPercentage") != -1 )
 	{
 		CPLString osCloudCoverValue = CSLFetchNameValue(szrImageMetadata.List(), "productInfo.productCloudCoverPercentage");
-		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), CPLStripQuotes(osCloudCoverValue));
+		szrCommonImageMetadata.SetNameValue(MDName_CloudCover, CPLStripQuotes(osCloudCoverValue));
 	}
 	
 	if( CSLFindName(szrImageMetadata.List(), "inputImageInfo.firstLineAcquisitionDateTime") != -1 )
 	{
 		CPLString osAcqisitionTime;
 		GetAcqisitionTimeFromString(CSLFetchNameValue(szrImageMetadata.List(), "inputImageInfo.firstLineAcquisitionDateTime"), osAcqisitionTime);
-		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTime);
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, osAcqisitionTime);
 	}
 }
 
@@ -192,7 +191,7 @@ void OrbView::ReadRPCFromWKT(RSMDRPC& rRPC) const
 	CPLStringList szrRPC;
 	if (osRPCSourceFilename != "")
 	{
-        ReadRPCFile(osRPCSourceFilename.c_str(), szrRPC);
+        ReadRPCFile(osRPCSourceFilename, szrRPC);
 	}
 
 	const char* szpLineOffset = szrRPC.FetchNameValue("LINE_OFF");
@@ -239,19 +238,19 @@ void OrbView::ReadRPCFromWKT(RSMDRPC& rRPC) const
 	for(int i = 1; i < 21; ++i)
 	{
 		CPLString coefName = CPLString().Printf("LINE_NUM_COEFF_%d",i);
-		const char* szpCoef = szrRPC.FetchNameValue(coefName.c_str());
+		const char* szpCoef = szrRPC.FetchNameValue(coefName);
 		if (szpCoef != NULL)
 			 lineNumCoef = lineNumCoef + " " + CPLString(szpCoef);
 		else
 			return;
 	}
-	rRPC.lineNumCoef = lineNumCoef.c_str();
+	rRPC.lineNumCoef = lineNumCoef;
 	
 	CPLString lineDenCoef;
 	for(int i = 1; i < 21; ++i)
 	{
 		CPLString coefName = CPLString().Printf("LINE_DEN_COEFF_%d",i);
-		const char* szpCoef = szrRPC.FetchNameValue(coefName.c_str());
+		const char* szpCoef = szrRPC.FetchNameValue(coefName);
 		if (szpCoef != NULL)
 		{
 			lineDenCoef = lineDenCoef + " " + CPLString(szpCoef);
@@ -259,41 +258,41 @@ void OrbView::ReadRPCFromWKT(RSMDRPC& rRPC) const
 		else
 			return;
 	}
-	rRPC.lineDenCoef = lineDenCoef.c_str();
+	rRPC.lineDenCoef = lineDenCoef;
 
 	CPLString sampNumCoef;
 	for(int i = 1; i < 21; ++i)
 	{
 		CPLString coefName = CPLString().Printf("SAMP_NUM_COEFF_%d",i);
-		const char* szpCoef = szrRPC.FetchNameValue(coefName.c_str());
+		const char* szpCoef = szrRPC.FetchNameValue(coefName);
 		if (szpCoef != NULL)
 			 sampNumCoef = sampNumCoef + " " + CPLString(szpCoef);
 		else
 			return;
 	}
-	rRPC.sampNumCoef = sampNumCoef.c_str();
+	rRPC.sampNumCoef = sampNumCoef;
 
 	CPLString sampDenCoef;
 	for(int i = 1; i < 21; ++i)
 	{
 		CPLString coefName = CPLString().Printf("SAMP_DEN_COEFF_%d",i);
-		const char* szpCoef = szrRPC.FetchNameValue(coefName.c_str());
+		const char* szpCoef = szrRPC.FetchNameValue(coefName);
 		if (szpCoef != NULL)
 			 sampDenCoef = sampDenCoef + " " + CPLString(szpCoef);
 		else
 			return;
 	}
-	rRPC.sampDenCoef = sampDenCoef.c_str();
+	rRPC.sampDenCoef = sampDenCoef;
 }
 
 const CPLStringList OrbView::DefineSourceFiles() const
 {
 	CPLStringList papszFileList;
 
-	if(osIMDSourceFilename != "" && osRPCSourceFilename != "")
+	if(!osIMDSourceFilename.empty() && !osRPCSourceFilename.empty())
 	{
-		papszFileList.AddString(osIMDSourceFilename.c_str());
-		papszFileList.AddString(osRPCSourceFilename.c_str());
+		papszFileList.AddString(osIMDSourceFilename);
+		papszFileList.AddString(osRPCSourceFilename);
 	}
 
 	return papszFileList;

@@ -51,7 +51,7 @@ namespace
             CPLString osLine(papszLines[i]);
             
             char *ppszKey = NULL;				
-			const char* value = CPLParseNameValue(osLine.c_str(), &ppszKey);
+			const char* value = CPLParseNameValue(osLine, &ppszKey);
 
 			oslIMD.AddNameValue(ppszKey, value);
 			
@@ -78,14 +78,14 @@ namespace
             
             char *ppszKey = NULL;				
 
-			if(strstr(osLine.c_str(),"BEGIN_") != NULL && strstr(osLine.c_str(),"_BEGIN") == NULL)
+			if(strstr(osLine,"BEGIN_") != NULL && strstr(osLine,"_BEGIN") == NULL)
 			{
 				osGroupName = osLine.substr( 6, osLine.size() - 12);
 				osLine.Clear();
 				continue;
 			}
 
-			if(strstr(osLine.c_str(),"END_") != NULL && strstr(osLine.c_str(),"_END") == NULL)
+			if(strstr(osLine,"END_") != NULL && strstr(osLine,"_END") == NULL)
 			{
 				osGroupName = "";
 				osLine.Clear();
@@ -94,20 +94,20 @@ namespace
 			
 			if (osGroupName.empty())
 			{
-				const char* value = CPLGoodParseNameValue(osLine.c_str(), &ppszKey, '\t');
+				const char* value = CPLGoodParseNameValue(osLine, &ppszKey, '\t');
 				oslRPC.AddNameValue(ppszKey, value);
 			}
 			else
 			{
 				int i;
-				for( i = 0; osLine.c_str()[i] != '\0'; i++ )
+				for( i = 0; osLine[i] != '\0'; i++ )
 				{
-					if( osLine.c_str()[i] != '\t')
+					if( osLine[i] != '\t')
 						break;
 				}
 
-				const char* value = CPLGoodParseNameValue(osLine.c_str(), &ppszKey, '\t');
-				oslRPC.AddNameValue(CPLString().Printf("%s.%s",osGroupName.c_str(), ppszKey).c_str(), value);
+				const char* value = CPLGoodParseNameValue(osLine, &ppszKey, '\t');
+				oslRPC.AddNameValue(CPLString().Printf("%s.%s",osGroupName.c_str(), ppszKey), value);
 			}
 			
 			CPLFree( ppszKey ); 
@@ -126,7 +126,7 @@ namespace
 		size_t iMin;
 		size_t iSec;
 
-		int r = sscanf ( rsAcqisitionTime.c_str(), "%d %d %d %d %d %d", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+		int r = sscanf ( rsAcqisitionTime, "%ul %ul %ul %ul %ul %ul", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
 
 		if (r != 6)
 			return -1;
@@ -140,7 +140,7 @@ namespace
 		tmDateTime.tm_year = iYear - 1900;
 
 		char buffer [80];
-		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		/*size_t dCharsCount = */strftime (buffer,80,AcquisitionDateTimeFormat,&tmDateTime);
 		rsAcqisitionTimeFormatted.assign(&buffer[0]);
 
 		return mktime(&tmDateTime);
@@ -156,7 +156,7 @@ namespace
 		time_t timeMid = timeStart + (timeEnd - timeStart)/2;
 
 		char buffer [80];
-		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(), localtime(&timeMid));
+		/*size_t dCharsCount = */strftime (buffer,80,AcquisitionDateTimeFormat, localtime(&timeMid));
 		osAcqisitionTime.assign(&buffer[0]);
 
 		return true;
@@ -169,7 +169,7 @@ Kompsat::Kompsat(const char* pszFilename)
 	osIMDSourceFilename = GDALFindAssociatedFile( pszFilename, "eph", NULL, 0 );
 	osRPCSourceFilename = GDALFindAssociatedFile( pszFilename, "rpc", NULL, 0 );
 	osIMDSourceFilenameTXT = GDALFindAssociatedFile( pszFilename, "txt", NULL, 0 );
-};
+}
 
 const bool Kompsat::IsFullCompliense() const
 {
@@ -191,12 +191,12 @@ void Kompsat::ReadImageMetadataFromWKT(CPLStringList& szrImageMetadata) const
 {
 	if (!osIMDSourceFilename.empty())
 	{
-		ReadIMDFile( osIMDSourceFilename.c_str(), szrImageMetadata);
+		ReadIMDFile( osIMDSourceFilename, szrImageMetadata);
 	}
 
 	if (!osIMDSourceFilenameTXT.empty())
 	{
-		ReadIMDFile( osIMDSourceFilenameTXT.c_str(), szrImageMetadata);
+		ReadIMDFile( osIMDSourceFilenameTXT, szrImageMetadata);
 	}
 }
 
@@ -210,15 +210,15 @@ void Kompsat::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringL
 		CPLString osAcqisitionTime;
 
 		if(GetAcqisitionMidTime(osTimeStart, osTimeEnd, osAcqisitionTime) )
-			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTime.c_str());
+			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, osAcqisitionTime);
 		else
-			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), "unknown");
+			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, "unknown");
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "AUX_SATELLITE_NAME") != -1)
 	{
 		CPLString osSatName = CSLFetchNameValue(szrImageMetadata.List(), "AUX_SATELLITE_NAME");
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), osSatName.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId, osSatName);
 	}
 }
 
@@ -234,7 +234,7 @@ void Kompsat::ReadRPCFromWKT(RSMDRPC& rRPC) const
 	CPLStringList szrRPC;
 	if (osRPCSourceFilename != "")
 	{
-        ReadRPCFile(osRPCSourceFilename.c_str(), szrRPC);
+        ReadRPCFile(osRPCSourceFilename, szrRPC);
 	}
 
 	const char* szpLineOffset = szrRPC.FetchNameValue("LINE_OFF");
@@ -281,19 +281,19 @@ void Kompsat::ReadRPCFromWKT(RSMDRPC& rRPC) const
 	for(int i = 1; i < 21; ++i)
 	{
 		CPLString coefName = CPLString().Printf("LINE_NUM_COEFF_%d",i);
-		const char* szpCoef = szrRPC.FetchNameValue(coefName.c_str());
+		const char* szpCoef = szrRPC.FetchNameValue(coefName);
 		if (szpCoef != NULL)
 			 lineNumCoef = lineNumCoef + " " + CPLString(szpCoef);
 		else
 			return;
 	}
-	rRPC.lineNumCoef = lineNumCoef.c_str();
+	rRPC.lineNumCoef = lineNumCoef;
 	
 	CPLString lineDenCoef;
 	for(int i = 1; i < 21; ++i)
 	{
 		CPLString coefName = CPLString().Printf("LINE_DEN_COEFF_%d",i);
-		const char* szpCoef = szrRPC.FetchNameValue(coefName.c_str());
+		const char* szpCoef = szrRPC.FetchNameValue(coefName);
 		if (szpCoef != NULL)
 		{
 			lineDenCoef = lineDenCoef + " " + CPLString(szpCoef);
@@ -301,31 +301,31 @@ void Kompsat::ReadRPCFromWKT(RSMDRPC& rRPC) const
 		else
 			return;
 	}
-	rRPC.lineDenCoef = lineDenCoef.c_str();
+	rRPC.lineDenCoef = lineDenCoef;
 
 	CPLString sampNumCoef;
 	for(int i = 1; i < 21; ++i)
 	{
 		CPLString coefName = CPLString().Printf("SAMP_NUM_COEFF_%d",i);
-		const char* szpCoef = szrRPC.FetchNameValue(coefName.c_str());
+		const char* szpCoef = szrRPC.FetchNameValue(coefName);
 		if (szpCoef != NULL)
 			 sampNumCoef = sampNumCoef + " " + CPLString(szpCoef);
 		else
 			return;
 	}
-	rRPC.sampNumCoef = sampNumCoef.c_str();
+	rRPC.sampNumCoef = sampNumCoef;
 
 	CPLString sampDenCoef;
 	for(int i = 1; i < 21; ++i)
 	{
 		CPLString coefName = CPLString().Printf("SAMP_DEN_COEFF_%d",i);
-		const char* szpCoef = szrRPC.FetchNameValue(coefName.c_str());
+		const char* szpCoef = szrRPC.FetchNameValue(coefName);
 		if (szpCoef != NULL)
 			 sampDenCoef = sampDenCoef + " " + CPLString(szpCoef);
 		else
 			return;
 	}
-	rRPC.sampDenCoef = sampDenCoef.c_str();
+	rRPC.sampDenCoef = sampDenCoef;
 }
 
 const CPLStringList Kompsat::DefineSourceFiles() const
@@ -333,13 +333,13 @@ const CPLStringList Kompsat::DefineSourceFiles() const
 	CPLStringList papszFileList;
 
 	if(!osIMDSourceFilename.empty())
-		papszFileList.AddString(osIMDSourceFilename.c_str());
+		papszFileList.AddString(osIMDSourceFilename);
 		
 	if(!osIMDSourceFilenameTXT.empty())
-		papszFileList.AddString(osIMDSourceFilenameTXT.c_str());
+		papszFileList.AddString(osIMDSourceFilenameTXT);
 
 	if(!osRPCSourceFilename.empty())
-		papszFileList.AddString(osRPCSourceFilename.c_str());
+		papszFileList.AddString(osRPCSourceFilename);
 
 	return papszFileList;
 }

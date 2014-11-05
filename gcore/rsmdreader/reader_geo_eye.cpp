@@ -41,12 +41,11 @@ GeoEye::GeoEye(const char* pszFilename)
 	CPLString osDirName = CPLGetDirname(pszFilename);
 	CPLString osBaseName = CPLGetBasename(pszFilename);
 	
-	osWKTRPCSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("%s_rpc", osBaseName.c_str()), ".txt" );
+	osWKTRPCSourceFilename = CPLFormFilename( osDirName, CPLSPrintf("%s_rpc", osBaseName.c_str()), ".txt" );
 
-	VSIStatBufL sStatBuf;
-	if( VSIStatExL( osWKTRPCSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
+    if (!CPLCheckForFile((char*)osWKTRPCSourceFilename.c_str(), NULL))
     {
-		osWKTRPCSourceFilename = "";
+        osWKTRPCSourceFilename.clear();
 	}
 
 
@@ -62,12 +61,12 @@ GeoEye::GeoEye(const char* pszFilename)
 		int iFound = osFileName.find("_metadata");
 		if( iFound != -1)
 		{
-			osIMDSourceFilename = CPLFormFilename( osDirName.c_str(), osFileName.c_str(), NULL );
+			osIMDSourceFilename = CPLFormFilename( osDirName, osFileName, NULL );
 			break;
 		}
     }
 	
-};
+}
 
 const bool GeoEye::IsFullCompliense() const
 {
@@ -79,12 +78,12 @@ const bool GeoEye::IsFullCompliense() const
 
 void GeoEye::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 {	
-    char **papszLines = CSLLoad( osIMDSourceFilename.c_str() );
+    char **papszLines = CSLLoad( osIMDSourceFilename );
     if( papszLines == NULL )
         return;
     
-	bool bInCompanyInformationSection = false;
-	bool bMetadataSection = false;
+	//bool bInCompanyInformationSection = false;
+	//bool bMetadataSection = false;
 	CPLString MetadataSectionName;
 
 	CPLString sMetadataPrefix;
@@ -98,7 +97,7 @@ void GeoEye::ReadImageMetadata(CPLStringList& szrImageMetadata) const
             EQUALN( osLine, "Acquisition Date/Time:", 22) )
 		{
 			char *ppszKey = NULL;
-			const char* value = CPLParseNameValue(osLine.c_str(), &ppszKey);
+			const char* value = CPLParseNameValue(osLine, &ppszKey);
 
 			szrImageMetadata.AddNameValue(ppszKey, value);
 			
@@ -121,7 +120,7 @@ void GeoEye::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 		{
 			if (bReadGroup)
 			{
-				szrImageMetadata.AddNameValue( sGroupName.c_str(), sGroupContent.c_str() );
+				szrImageMetadata.AddNameValue( sGroupName, sGroupContent );
 			}
 
 			sGroupName.clear();
@@ -134,7 +133,7 @@ void GeoEye::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 		if(!bReadGroup)
 		{
 			char *ppszKey = NULL;
-			const char* value = CPLGoodParseNameValue(osLine.c_str(), &ppszKey, ':');
+			const char* value = CPLGoodParseNameValue(osLine, &ppszKey, ':');
 			
 			if(value != NULL)
 			{
@@ -164,19 +163,19 @@ void GeoEye::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringLi
 	if( CSLFindName(szrImageMetadata.List(), "Sensor") != -1)
 	{
 		CPLString osSatName = CSLFetchNameValue(szrImageMetadata.List(), "Sensor");
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), osSatName.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId, osSatName);
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "Percent Cloud Cover") != -1)
 	{
 		CPLString osCloudCover = CSLFetchNameValue(szrImageMetadata.List(), "Percent Cloud Cover");
-		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), osCloudCover.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_CloudCover, osCloudCover);
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "Acquisition Date/Time") != -1)
 	{
 		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Acquisition Date/Time");
-		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTime.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, osAcqisitionTime);
 	}
 }
 
@@ -190,9 +189,9 @@ void GeoEye::ReadRPC(RSMDRPC& rRPC) const
 void GeoEye::ReadRPCFromWKT(RSMDRPC& rRPC) const
 {
 	CPLStringList szrRPC;
-	if (osWKTRPCSourceFilename != "")
+	if (!osWKTRPCSourceFilename.empty())
 	{
-		char **papszRPCMD = GDALLoadRPCFile( osWKTRPCSourceFilename.c_str(), NULL );
+		char **papszRPCMD = GDALLoadRPCFile( osWKTRPCSourceFilename, NULL );
 
 		if( papszRPCMD != NULL )
         {
@@ -264,8 +263,8 @@ const CPLStringList GeoEye::DefineSourceFiles() const
 
 	if(!osWKTRPCSourceFilename.empty() && !osIMDSourceFilename.empty())
 	{
-		papszFileList.AddString(osWKTRPCSourceFilename.c_str());
-		papszFileList.AddString(osIMDSourceFilename.c_str());
+		papszFileList.AddString(osWKTRPCSourceFilename);
+		papszFileList.AddString(osIMDSourceFilename);
 	}
 	
 	return papszFileList;

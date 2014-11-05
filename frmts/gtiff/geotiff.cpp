@@ -4095,6 +4095,7 @@ GTiffDataset::GTiffDataset()
     nRefBaseMapping = 0;
 
 	bMetadataHaveBeenRead = false;
+    pRSMDReader = NULL;
 }
 
 /************************************************************************/
@@ -4244,6 +4245,7 @@ int GTiffDataset::Finalize()
     ppoActiveDSRef = NULL;
 
     delete pRSMDReader;
+    pRSMDReader = NULL;
     
     bIsFinalized = TRUE;
 

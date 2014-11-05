@@ -38,20 +38,19 @@ Spot::Spot(const char* pszFilename)
 	:RSMDReader(pszFilename, "Spot")
 {
 	CPLString osDirName = CPLGetDirname(pszFilename);
-	osIMDSourceFilename = CPLFormFilename( osDirName.c_str(), "METADATA.DIM", NULL );
+	osIMDSourceFilename = CPLFormFilename( osDirName, "METADATA.DIM", NULL );
 
-	VSIStatBufL sStatBuf;
-	if( VSIStatExL( osIMDSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
+    if (!CPLCheckForFile((char*)osIMDSourceFilename.c_str(), NULL))
     {
-		osIMDSourceFilename = "";
+		osIMDSourceFilename.clear();
 	}
-};
+}
 
 const bool Spot::IsFullCompliense() const
 {
 	if( !osIMDSourceFilename.empty() )
 	{
-		CPLXMLNode* psNode = CPLParseXMLFile(osIMDSourceFilename.c_str());
+		CPLXMLNode* psNode = CPLParseXMLFile(osIMDSourceFilename);
 		if(psNode == NULL)
 			return false;
 
@@ -84,7 +83,7 @@ void Spot::ReadImageMetadataFromXML(CPLStringList& szrImageMetadata) const
 {
 	if(osIMDSourceFilename != "")
 	{
-		CPLXMLNode* psNode = CPLParseXMLFile(osIMDSourceFilename.c_str());
+		CPLXMLNode* psNode = CPLParseXMLFile(osIMDSourceFilename);
 		if(psNode == NULL)
 			return;
 
@@ -110,7 +109,7 @@ void Spot::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList
 		CPLString MissionIndexValue = CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Information.Scene_Source.MISSION_INDEX");
 		CPLString SatelliteId = MissionValue + " " + MissionIndexValue;
 
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteId.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId, SatelliteId);
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "Dataset_Sources.Source_Information.Scene_Source.IMAGING_DATE") != -1 &&
@@ -120,7 +119,7 @@ void Spot::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList
 		CPLString osAcqisitionDate = CSLFetchNameValue(szrImageMetadata.List(), "Dataset_Sources.Source_Information.Scene_Source.IMAGING_DATE");
 		CPLString AcqisitionDateTime = osAcqisitionDate + " " + osAcqisitionTime;
 
-		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), AcqisitionDateTime.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, AcqisitionDateTime);
 	}
 }
 
@@ -131,9 +130,9 @@ void Spot::ReadRPC(RSMDRPC& rRPC) const
 const CPLStringList Spot::DefineSourceFiles() const
 {
 	CPLStringList papszFileList;
-	if(osIMDSourceFilename != "")
+	if(!osIMDSourceFilename.empty())
 	{
-		papszFileList.AddString(osIMDSourceFilename.c_str());
+		papszFileList.AddString(osIMDSourceFilename);
 	}
 	return papszFileList;
 }

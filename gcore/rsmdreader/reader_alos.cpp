@@ -47,7 +47,7 @@ namespace
 		size_t iMin = 0;
 		size_t iSec = 0;
 
-		int r = sscanf ( rsAcqisitionTime.c_str(), "%4d%2d%2d %d:%d:%d.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+		int r = sscanf ( rsAcqisitionTime, "%4ul%2ul%2ul %ul:%ul:%ul.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
 
 		// For Img_SceneCenterDateTime r = 20090428 07:53:50.116 
 		// For Lbi_ObservationDate r = 3 (20100815)
@@ -63,7 +63,7 @@ namespace
 		tmDateTime.tm_year = iYear - 1900;
 
 		char buffer [80];
-		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		/* size_t dCharsCount = */ strftime (buffer,80,AcquisitionDateTimeFormat,&tmDateTime);
 		rsAcqisitionTimeFormatted.assign(&buffer[0]);
 
 		return mktime(&tmDateTime);
@@ -71,29 +71,30 @@ namespace
 }
 
 ALOS::ALOS(const char* pszFilename)
-	:RSMDReader(pszFilename, "ALOS")
+:RSMDReader(pszFilename, "ALOS")
 {
-	CPLString osDirName(CPLGetDirname(pszFilename));
-	CPLString osFileName(CPLGetBasename(pszFilename));
-	
-	// Without IMG_ prefix
-	CPLString osSceneProductInfo(osFileName.substr(4, osFileName.size() - 4));
-	
-	osIMDSourceFilename = CPLFormFilename( osDirName.c_str(), "summary", ".txt" );
-	osRPCSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("RPC-%s", osSceneProductInfo.c_str()), ".txt" );
+    CPLString osDirName(CPLGetDirname(pszFilename));
+    CPLString osFileName(CPLGetBasename(pszFilename));
 
-	VSIStatBufL sStatBuf;
-	if( VSIStatExL( osIMDSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
+    if (CPLStrnlen(osFileName, 255) > 4)
     {
-		osIMDSourceFilename = "";
-	}	
+        // Without IMG_ prefix
+        CPLString osSceneProductInfo(osFileName.substr(4, osFileName.size() - 4));
 
-	if( VSIStatExL( osRPCSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
-    {
-		osRPCSourceFilename = "";
-	}
+        osIMDSourceFilename = CPLFormFilename(osDirName, "summary", ".txt");
+        osRPCSourceFilename = CPLFormFilename(osDirName, CPLSPrintf("RPC-%s", osSceneProductInfo.c_str()), ".txt");
+        
+        if (!CPLCheckForFile((char*)osIMDSourceFilename.c_str(), NULL))
+        {
+            osIMDSourceFilename.clear();
+        }
 
-};
+        if (!CPLCheckForFile((char*)osRPCSourceFilename.c_str(), NULL))
+        {
+            osRPCSourceFilename.clear();
+        }
+    }
+}
 
 const bool ALOS::IsFullCompliense() const
 {
@@ -105,7 +106,7 @@ const bool ALOS::IsFullCompliense() const
 
 void ALOS::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 {
-	char **papszLines = CSLLoad( osIMDSourceFilename.c_str() );
+	char **papszLines = CSLLoad( osIMDSourceFilename );
     if( papszLines == NULL )
         return;
      
@@ -114,7 +115,7 @@ void ALOS::ReadImageMetadata(CPLStringList& szrImageMetadata) const
         CPLString osLine(papszLines[i]);
         
         char *ppszKey = NULL;				
-		const char* value = CPLParseNameValue(osLine.c_str(), &ppszKey);
+		const char* value = CPLParseNameValue(osLine, &ppszKey);
 
 		szrImageMetadata.AddNameValue(ppszKey, value);
 		
@@ -131,26 +132,26 @@ void ALOS::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList
 		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Img_SceneCenterDateTime");
 		CPLString osAcqisitionTimeF = "";
 		GetAcqisitionTimeFromString(CPLStripQuotes(osAcqisitionTime), osAcqisitionTimeF);
-		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTimeF.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, osAcqisitionTimeF);
 	}
 	else if ( CSLFindName(szrImageMetadata.List(), "Lbi_ObservationDate") != -1)
 	{
 		CPLString osAcqisitionTime = CSLFetchNameValue(szrImageMetadata.List(), "Lbi_ObservationDate");
 		CPLString osAcqisitionTimeF = "";
 		GetAcqisitionTimeFromString(CPLStripQuotes(osAcqisitionTime), osAcqisitionTimeF);
-		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTimeF.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, osAcqisitionTimeF);
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "Lbi_Satellite") != -1)
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "Lbi_Satellite");
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), CPLStripQuotes(SatelliteIdValue).c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId, CPLStripQuotes(SatelliteIdValue));
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "Img_CloudQuantityOfAllImage") != -1)
 	{
 		CPLString CloudCover = CSLFetchNameValue(szrImageMetadata.List(), "Img_CloudQuantityOfAllImage");
-		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), CPLStripQuotes(CloudCover).c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_CloudCover, CPLStripQuotes(CloudCover));
 	}
 }
 
@@ -236,9 +237,9 @@ const CPLStringList ALOS::DefineSourceFiles() const
 	CPLStringList papszFileList;
 
 	if(!osIMDSourceFilename.empty())
-		papszFileList.AddString(osIMDSourceFilename.c_str());
+		papszFileList.AddString(osIMDSourceFilename);
 	if(!osRPCSourceFilename.empty())
-		papszFileList.AddString(osRPCSourceFilename.c_str());
+		papszFileList.AddString(osRPCSourceFilename);
 
 
 	return papszFileList;

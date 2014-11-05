@@ -44,7 +44,7 @@ namespace
 		size_t iMin;
 		size_t iSec;
 
-		int r = sscanf ( rsAcqisitionTime.c_str(), "%d-%d-%d,%d:%d:%d.%*d", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+		int r = sscanf ( rsAcqisitionTime, "%ul-%ul-%ul,%ul:%ul:%ul.%*ul", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
 
 		if (r != 6)
 			return -1;
@@ -58,7 +58,7 @@ namespace
 		tmDateTime.tm_year = iYear - 1900;
 
 		char buffer [80];
-		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		/*size_t dCharsCount = */strftime (buffer,80,AcquisitionDateTimeFormat,&tmDateTime);
 		rsAcqisitionTimeFormatted.assign(&buffer[0]);
 
 		return mktime(&tmDateTime);
@@ -74,7 +74,7 @@ namespace
 		time_t timeMid = timeStart + (timeEnd - timeStart)/2;
 
 		char buffer [80];
-		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(), localtime(&timeMid));
+		/*size_t dCharsCount = */strftime (buffer,80,AcquisitionDateTimeFormat, localtime(&timeMid));
 		osAcqisitionTime.assign(&buffer[0]);
 
 		return true;
@@ -89,14 +89,13 @@ EROS::EROS(const char* pszFilename)
 	
 	CPLString osBaseName( osFileName.substr(0, osFileName.find(".")) );
 	
-	osIMDSourceFilename = CPLFormFilename( osDirName.c_str(), osBaseName.c_str(), ".pass" );
+	osIMDSourceFilename = CPLFormFilename( osDirName, osBaseName, ".pass" );
 
-	VSIStatBufL sStatBuf;
-	if( VSIStatExL( osIMDSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
+    if (!CPLCheckForFile((char*)osIMDSourceFilename.c_str(), NULL))
     {
-		osIMDSourceFilename = "";
+		osIMDSourceFilename.clear();
 	}
-};
+}
 
 const bool EROS::IsFullCompliense() const
 {
@@ -108,7 +107,7 @@ const bool EROS::IsFullCompliense() const
 
 void EROS::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 {
-	char **papszLines = CSLLoad( osIMDSourceFilename.c_str() );
+	char **papszLines = CSLLoad( osIMDSourceFilename );
     if( papszLines == NULL )
         return;
      
@@ -117,7 +116,7 @@ void EROS::ReadImageMetadata(CPLStringList& szrImageMetadata) const
         CPLString osLine(papszLines[i]);
         
         char *ppszKey = NULL;
-		const char* value = CPLGoodParseNameValue(osLine.c_str(), &ppszKey, ' ');
+		const char* value = CPLGoodParseNameValue(osLine, &ppszKey, ' ');
 
 		szrImageMetadata.AddNameValue(ppszKey, value);
 		
@@ -132,7 +131,7 @@ void EROS::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList
 	if( CSLFindName(szrImageMetadata.List(), "satellite") != -1)
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "satellite");
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), SatelliteIdValue.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId, SatelliteIdValue);
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "sweep_start_utc") != -1 &&
@@ -143,9 +142,9 @@ void EROS::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList
 		CPLString osAcqisitionTime;
 		
 		if(GetAcqisitionMidTime(osTimeStart, osTimeEnd, osAcqisitionTime))
-			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), osAcqisitionTime.c_str());
+			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, osAcqisitionTime);
 		else
-			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), "unknown");
+			szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, "unknown");
 	}
 }
 
@@ -160,7 +159,7 @@ const CPLStringList EROS::DefineSourceFiles() const
 
 	if(!osIMDSourceFilename.empty())
 	{
-		papszFileList.AddString(osIMDSourceFilename.c_str());
+		papszFileList.AddString(osIMDSourceFilename);
 	}
 
 	return papszFileList;

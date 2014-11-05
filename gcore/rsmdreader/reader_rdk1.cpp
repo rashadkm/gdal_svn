@@ -49,7 +49,7 @@ namespace
 		size_t iMin;
 		size_t iSec;
 
-		int r = sscanf ( rsAcqisitionTime.c_str(), "%d/%d/%d %d:%d:%d.%*s", &iDay, &iMonth, &iYear, &iHours, &iMin, &iSec);
+		int r = sscanf ( rsAcqisitionTime, "%ul/%ul/%ul %ul:%ul:%ul.%*s", &iDay, &iMonth, &iYear, &iHours, &iMin, &iSec);
 		if (r != 6)
 			return -1;
 		
@@ -62,7 +62,7 @@ namespace
 		tmDateTime.tm_year = iYear - 1900;
 
 		char buffer [80];
-		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		/*size_t dCharsCount = */strftime (buffer,80,AcquisitionDateTimeFormat,&tmDateTime);
 		rsAcqisitionTimeFormatted.assign(&buffer[0]);
 
 		return mktime(&tmDateTime);
@@ -77,7 +77,7 @@ RDK1::RDK1(const char* pszFilename)
     osIMDSourceFilename = "";
     if( IsIMDValid(osFilename) )
         osIMDSourceFilename = osFilename;
-};
+}
 
 const bool RDK1::IsFullCompliense() const
 {
@@ -92,7 +92,7 @@ void RDK1::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 	CPLStringList szrBadXMLMetadata;
 	if(osIMDSourceFilename != "")
 	{
-		CPLXMLNode* psNode = CPLParseXMLFile(osIMDSourceFilename.c_str());
+		CPLXMLNode* psNode = CPLParseXMLFile(osIMDSourceFilename);
 		if(psNode == NULL)
 		{
 			return;
@@ -129,7 +129,7 @@ void RDK1::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 			/*
 			* TODO Change CPLParseNameValue function for delete spaces before char '='
 			*/
-			const char* value = CPLParseNameValue(osLine.c_str(), &ppszKey);
+			const char* value = CPLParseNameValue(osLine, &ppszKey);
 			
 			CPLString osKey(ppszKey);
 			int i = osKey.size();
@@ -140,7 +140,7 @@ void RDK1::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 			}
 
 			CPLString osFullKey = CPLString(ppszRootKey) + "." + osKey;
-			szrImageMetadata.AddNameValue(osFullKey.c_str(), value);
+			szrImageMetadata.AddNameValue(osFullKey, value);
 		}
 	}
 }
@@ -150,7 +150,7 @@ void RDK1::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList
 	if( CSLFindName(szrImageMetadata.List(), "MSP_ROOT.cCodeKA") != -1)
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "MSP_ROOT.cCodeKA");
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), CPLStripQuotes(SatelliteIdValue).c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId, CPLStripQuotes(SatelliteIdValue));
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "Acquisition.dDateRoute") != -1 &&
@@ -161,7 +161,7 @@ void RDK1::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringList
 		CPLString AcqisitionDateTime;
 
 		GetAcqisitionTimeFromString(osAcqisitionDate + " " + osAcqisitionTime, AcqisitionDateTime);		
-		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), AcqisitionDateTime.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, AcqisitionDateTime);
 	}
 }
 
@@ -174,9 +174,9 @@ const CPLStringList RDK1::DefineSourceFiles() const
 {
 	CPLStringList papszFileList;
 
-	if(osIMDSourceFilename != "")
+	if(!osIMDSourceFilename.empty())
 	{
-		papszFileList.AddString(osIMDSourceFilename.c_str());
+		papszFileList.AddString(osIMDSourceFilename);
 	}
 
 	return papszFileList;
@@ -186,7 +186,7 @@ bool RDK1::IsIMDValid(const CPLString& psFilename) const
 {
 	if(psFilename != "")
 	{
-		CPLXMLNode* psNode = CPLParseXMLFile(psFilename.c_str());
+		CPLXMLNode* psNode = CPLParseXMLFile(psFilename);
 		if(psNode == NULL)
 			return false;
 

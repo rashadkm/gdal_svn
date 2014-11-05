@@ -54,7 +54,7 @@ namespace
 				break;		
 
 			char *ppszKey = NULL;
-			const char* value = CPLGoodParseNameValue(osLine.c_str(), &ppszKey, '=');
+			const char* value = CPLGoodParseNameValue(osLine, &ppszKey, '=');
 
 			if( value == NULL)
 			{
@@ -111,7 +111,7 @@ namespace
 		size_t iMin;
 		size_t iSec;
 		
-		int r = sscanf ( rsAcqisitionTime.c_str(), "%d-%d-%d %d:%d:%d.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+		int r = sscanf ( rsAcqisitionTime, "%ul-%ul-%ul %ul:%ul:%ul.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
 		if (r != 6)
 			return -1;
 		
@@ -124,7 +124,7 @@ namespace
 		tmDateTime.tm_year = iYear - 1900;
 
 		char buffer [80];
-		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		/*size_t dCharsCount = */strftime (buffer,80,AcquisitionDateTimeFormat,&tmDateTime);
 		rsAcqisitionTimeFormatted.assign(&buffer[0]);
 
 		return mktime(&tmDateTime);
@@ -139,14 +139,13 @@ Landsat::Landsat(const char* pszFilename)
 	
 	CPLString sBase(osBaseName.substr(0, osBaseName.size()-4));
 
-	osIMDSourceFilename = CPLFormFilename( osDirName.c_str(), CPLSPrintf("%s_MTL", sBase.c_str()), ".txt" );
+	osIMDSourceFilename = CPLFormFilename( osDirName, CPLSPrintf("%s_MTL", sBase.c_str()), ".txt" );
 
-	VSIStatBufL sStatBuf;
-	if( VSIStatExL( osIMDSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
+    if (!CPLCheckForFile((char*)osIMDSourceFilename.c_str(), NULL))
     {
-		osIMDSourceFilename = "";
+        osIMDSourceFilename.clear();
 	}
-};
+}
 
 const bool Landsat::IsFullCompliense() const
 {
@@ -171,13 +170,13 @@ void Landsat::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringL
 	if( CSLFindName(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.SPACECRAFT_ID") != -1 )
 	{
 		CPLString SatelliteIdValue = CSLFetchNameValue(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.SPACECRAFT_ID");
-		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId.c_str(), CPLStripQuotes(SatelliteIdValue).c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_SatelliteId, CPLStripQuotes(SatelliteIdValue));
 	}
 
 	if( CSLFindName(szrImageMetadata.List(), "L1_METADATA_FILE.IMAGE_ATTRIBUTES.CLOUD_COVER") != -1 )
 	{
 		CPLString CloudCover = CSLFetchNameValue(szrImageMetadata.List(), "L1_METADATA_FILE.IMAGE_ATTRIBUTES.CLOUD_COVER");
-		szrCommonImageMetadata.SetNameValue(MDName_CloudCover.c_str(), CPLStripQuotes(CloudCover).c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_CloudCover, CPLStripQuotes(CloudCover));
 	}
 	
 	if( CSLFindName(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.ACQUISITION_DATE") != -1 &&
@@ -188,7 +187,7 @@ void Landsat::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringL
 		
 		CPLString AcqisitionDateTime;
 		GetAcqisitionTimeFromString(CPLStripQuotes(osAcqisitionDate) + " " + CPLStripQuotes(osAcqisitionTime), AcqisitionDateTime);
-		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), AcqisitionDateTime.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, AcqisitionDateTime);
 	}
 	else if( CSLFindName(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.DATE_ACQUIRED") != -1 &&
 			CSLFindName(szrImageMetadata.List(), "L1_METADATA_FILE.PRODUCT_METADATA.SCENE_CENTER_TIME") != -1)
@@ -198,7 +197,7 @@ void Landsat::GetCommonImageMetadata(CPLStringList& szrImageMetadata, CPLStringL
 		
 		CPLString AcqisitionDateTime;
 		GetAcqisitionTimeFromString(CPLStripQuotes(osAcqisitionDate) + " " + CPLStripQuotes(osAcqisitionTime), AcqisitionDateTime);
-		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime.c_str(), AcqisitionDateTime.c_str());
+		szrCommonImageMetadata.SetNameValue(MDName_AcquisitionDateTime, AcqisitionDateTime);
 	}
 }
 
@@ -210,9 +209,9 @@ void Landsat::ReadRPC(RSMDRPC& rRPC) const
 const CPLStringList Landsat::DefineSourceFiles() const
 {
 	CPLStringList papszFileList;
-	if(osIMDSourceFilename != "")
+	if(!osIMDSourceFilename.empty())
 	{
-		papszFileList.AddString(osIMDSourceFilename.c_str());
+		papszFileList.AddString(osIMDSourceFilename);
 	}
 
 	return papszFileList;

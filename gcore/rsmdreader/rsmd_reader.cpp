@@ -72,32 +72,32 @@ RSMDReader* GetRSMDReader(const char* pszFilename, RSMDProvider rsdProvider)
 	return NULL;
 };
 
-RSMDReader* GetRSMDReader(const CPLString pszFilename)
+RSMDReader* GetRSMDReader(const CPLString &pszFilename)
 {
-	if(DigitalGlobe(pszFilename.c_str()).IsFullCompliense())
-		return new DigitalGlobe(pszFilename.c_str());
-    if(OrbView(pszFilename.c_str()).IsFullCompliense())
-		return new OrbView(pszFilename.c_str());
-	if(Pleiades(pszFilename.c_str()).IsFullCompliense())
-		return new Pleiades(pszFilename.c_str());
-	if(GeoEye(pszFilename.c_str()).IsFullCompliense())
-		return new GeoEye(pszFilename.c_str());
-	if(Kompsat(pszFilename.c_str()).IsFullCompliense())
-		return new Kompsat(pszFilename.c_str());
-	if(RDK1(pszFilename.c_str()).IsFullCompliense())
-		return new RDK1(pszFilename.c_str());
-	if(Spot(pszFilename.c_str()).IsFullCompliense())
-		return new Spot(pszFilename.c_str());
-	if(ALOS(pszFilename.c_str()).IsFullCompliense())
-		return new ALOS(pszFilename.c_str());
-	if(EROS(pszFilename.c_str()).IsFullCompliense())
-		return new EROS(pszFilename.c_str());
-	if(Formosat(pszFilename.c_str()).IsFullCompliense())
-		return new Formosat(pszFilename.c_str());
-	if(Landsat(pszFilename.c_str()).IsFullCompliense())
-		return new Landsat(pszFilename.c_str());
-	if(RapidEye(pszFilename.c_str()).IsFullCompliense())
-		return new RapidEye(pszFilename.c_str());
+	if(DigitalGlobe(pszFilename).IsFullCompliense())
+		return new DigitalGlobe(pszFilename);
+    if(OrbView(pszFilename).IsFullCompliense())
+		return new OrbView(pszFilename);
+	if(Pleiades(pszFilename).IsFullCompliense())
+		return new Pleiades(pszFilename);
+	if(GeoEye(pszFilename).IsFullCompliense())
+		return new GeoEye(pszFilename);
+	if(Kompsat(pszFilename).IsFullCompliense())
+		return new Kompsat(pszFilename);
+	if(RDK1(pszFilename).IsFullCompliense())
+		return new RDK1(pszFilename);
+	if(Spot(pszFilename).IsFullCompliense())
+		return new Spot(pszFilename);
+	if(ALOS(pszFilename).IsFullCompliense())
+		return new ALOS(pszFilename);
+	if(EROS(pszFilename).IsFullCompliense())
+		return new EROS(pszFilename);
+	if(Formosat(pszFilename).IsFullCompliense())
+		return new Formosat(pszFilename);
+	if(Landsat(pszFilename).IsFullCompliense())
+		return new Landsat(pszFilename);
+	if(RapidEye(pszFilename).IsFullCompliense())
+		return new RapidEye(pszFilename);
 	
 	return NULL;
 };

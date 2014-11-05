@@ -97,6 +97,6 @@ printf( "\t\t >>> metadata: %s\n", metadata[i] );
 }
 @endcode
 */
-RSMDReader* GetRSMDReader(const CPLString pszFilename);
+RSMDReader* GetRSMDReader(const CPLString &pszFilename);
 
 #endif /* _RSMD_READER_H_INCLUDED */

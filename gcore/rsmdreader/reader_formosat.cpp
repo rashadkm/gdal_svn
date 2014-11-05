@@ -45,7 +45,7 @@ namespace
 		size_t iMin = 0;
 		size_t iSec = 0;
 
-		int r = sscanf ( rsAcqisitionTime.c_str(), "%d-%d-%d %d:%d:%d.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
+		int r = sscanf ( rsAcqisitionTime.c_str(), "%ul-%ul-%ul %ul:%ul:%ul.%*s", &iYear, &iMonth, &iDay, &iHours, &iMin, &iSec);
 
 		if (r != 6)
 			return -1;
@@ -59,7 +59,7 @@ namespace
 		tmDateTime.tm_year = iYear - 1900;
 
 		char buffer [80];
-		size_t dCharsCount = strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
+		/*size_t dCharsCount = */strftime (buffer,80,AcquisitionDateTimeFormat.c_str(),&tmDateTime);
 		rsAcqisitionTimeFormatted.assign(&buffer[0]);
 
 		return mktime(&tmDateTime);
@@ -72,18 +72,17 @@ Formosat::Formosat(const char* pszFilename)
 	CPLString osDirName = CPLGetDirname(pszFilename);
 	osIMDSourceFilename = CPLFormFilename( osDirName.c_str(), "METADATA.DIM", NULL );
 
-	VSIStatBufL sStatBuf;
-	if( VSIStatExL( osIMDSourceFilename.c_str(), &sStatBuf, VSI_STAT_EXISTS_FLAG ) != 0 )
+    if (!CPLCheckForFile((char*)osIMDSourceFilename.c_str(), NULL))
     {
-		osIMDSourceFilename = "";
+        osIMDSourceFilename.clear();
 	}
-};
+}
 
 const bool Formosat::IsFullCompliense() const
 {
 	if( !osIMDSourceFilename.empty() )
 	{
-		CPLXMLNode* psNode = CPLParseXMLFile(osIMDSourceFilename.c_str());
+		CPLXMLNode* psNode = CPLParseXMLFile(osIMDSourceFilename);
 		if(psNode == NULL)
 			return false;
 
@@ -111,7 +110,7 @@ void Formosat::ReadImageMetadata(CPLStringList& szrImageMetadata) const
 {
 	if(!osIMDSourceFilename.empty())
 	{
-		CPLXMLNode* psNode = CPLParseXMLFile(osIMDSourceFilename.c_str());
+		CPLXMLNode* psNode = CPLParseXMLFile(osIMDSourceFilename);
 		if(psNode == NULL)
 			return;
 
@@ -159,9 +158,9 @@ void Formosat::ReadRPC(RSMDRPC& rRPC) const
 const CPLStringList Formosat::DefineSourceFiles() const
 {
 	CPLStringList papszFileList;
-	if(osIMDSourceFilename != "")
+	if(!osIMDSourceFilename.empty())
 	{
-		papszFileList.AddString(osIMDSourceFilename.c_str());
+		papszFileList.AddString(osIMDSourceFilename);
 	}
 	return papszFileList;
 }
