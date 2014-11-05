@@ -82,8 +82,6 @@ void ReadXML(CPLXMLNode* psNode, CPLString szFullName, CPLStringList& szlValues,
 
 	delete psNodeChildren;
 	delete psNodeNeighbor;
-
-	return;
 }
 
 void ReadXMLToStringList(CPLXMLNode* psNode, const CPLStringList& expulsionNodeNames, CPLStringList& szlValues)
@@ -171,6 +169,8 @@ bool FormatAcqisitionTime(const CPLString& rsAcqisitionTime, const CPLString& os
 
 	printf(">>> FormatAcqisitionTime: %s\n", ctime(&tAcqisitionTime));
 	osAcqisitionTime.assign(ctime(&tAcqisitionTime));
+
+    return true;
 }
 
 bool GetAcqisitionTime(const CPLString& rsAcqisitionStartTime, const CPLString& rsAcqisitionEndTime, const CPLString& osDateTimeTemplate, CPLString& osAcqisitionTime)
