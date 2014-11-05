@@ -231,31 +231,53 @@ GDALDataset *TILDataset::Open( GDALOpenInfo * poOpenInfo )
     }
     
     CPLString osDirname = CPLGetDirname(poOpenInfo->pszFilename);
-	
+	const std::map<CPLString, CPLStringList>* pmMetadata = NULL;
+	CPLStringList slIMD;
 	RSMDReader* pRSMDReader = GetRSMDReader(poOpenInfo->pszFilename);
-	const std::map<CPLString, CPLStringList>* pmMetadata = pRSMDReader->GetMetadata();
+	if(pRSMDReader)
+	{
+		pmMetadata = pRSMDReader->GetMetadata();
+		if(!pmMetadata)
+		{
+			delete pRSMDReader;
+			CPLError( CE_Failure, CPLE_OpenFailed,
+					  "Unable to open .TIL dataset due to missing .IMD file." );
+			return NULL;
+		}
 	
 /* -------------------------------------------------------------------- */
 /*      Try to find the corresponding .IMD file.                        */
 /* -------------------------------------------------------------------- */
-	CPLStringList slIMD = pmMetadata->find(MDPrefix_IMD)->second;
 
-    char **papszIMD = slIMD.List();
+		std::map<CPLString, CPLStringList>::const_iterator it = pmMetadata->find(MDPrefix_IMD);
+		if(it == pmMetadata->end())
+		{
+			delete pRSMDReader;
+			CPLError( CE_Failure, CPLE_OpenFailed,
+					  "Unable to open .TIL dataset due to missing .IMD file." );
+			return NULL;
+		}
+		
+		slIMD = it->second;
+	}
 
-    if( papszIMD == NULL )
+    if( slIMD.List() == NULL )
     {
+		if(pRSMDReader)
+			delete pRSMDReader;
         CPLError( CE_Failure, CPLE_OpenFailed,
                   "Unable to open .TIL dataset due to missing .IMD file." );
         return NULL;
     }
 
-    if( CSLFetchNameValue( papszIMD, "numRows" ) == NULL
-        || CSLFetchNameValue( papszIMD, "numColumns" ) == NULL
-        || CSLFetchNameValue( papszIMD, "bitsPerPixel" ) == NULL )
+    if( CSLFetchNameValue( slIMD.List(), "numRows" ) == NULL
+        || CSLFetchNameValue( slIMD.List(), "numColumns" ) == NULL
+        || CSLFetchNameValue( slIMD.List(), "bitsPerPixel" ) == NULL )
     {
+		if(pRSMDReader)
+			delete pRSMDReader;
         CPLError( CE_Failure, CPLE_OpenFailed,
                   "Missing a required field in the .IMD file." );
-        CSLDestroy( papszIMD );
         return NULL;
     }
 
@@ -266,7 +288,8 @@ GDALDataset *TILDataset::Open( GDALOpenInfo * poOpenInfo )
     
     if( fp == NULL )
     {
-        CSLDestroy( papszIMD );
+		if(pRSMDReader)
+			delete pRSMDReader;
         return NULL;
     }
 
@@ -274,8 +297,9 @@ GDALDataset *TILDataset::Open( GDALOpenInfo * poOpenInfo )
 
     if( !oParser.Ingest( fp ) )
     {
+		if(pRSMDReader)
+			delete pRSMDReader;
         VSIFCloseL( fp );
-        CSLDestroy( papszIMD );
         return NULL;
     }
 
@@ -291,16 +315,15 @@ GDALDataset *TILDataset::Open( GDALOpenInfo * poOpenInfo )
     poDS = new TILDataset();
 
     //poDS->osIMDFilename = osIMDFilename; 
-    poDS->SetMetadata( papszIMD, "IMD" );
-    poDS->nRasterXSize = atoi(CSLFetchNameValueDef(papszIMD,"numColumns","0"));
-    poDS->nRasterYSize = atoi(CSLFetchNameValueDef(papszIMD,"numRows","0"));
+    poDS->SetMetadata( slIMD.List(), "IMD" );
+    poDS->nRasterXSize = atoi(CSLFetchNameValueDef(slIMD.List(),"numColumns","0"));
+    poDS->nRasterYSize = atoi(CSLFetchNameValueDef(slIMD.List(),"numRows","0"));
 
 	poDS->pRSMDReader = pRSMDReader;
 	
     if (!GDALCheckDatasetDimensions(poDS->nRasterXSize, poDS->nRasterYSize))
     {
         delete poDS;
-        CSLDestroy( papszIMD );
         return NULL;
     }
 
@@ -315,7 +338,6 @@ GDALDataset *TILDataset::Open( GDALOpenInfo * poOpenInfo )
         CPLError( CE_Failure, CPLE_AppDefined,
                   "Missing TILE_1.filename in .TIL file." );
         delete poDS;
-        CSLDestroy( papszIMD );
         return NULL;
     }
 
@@ -330,7 +352,6 @@ GDALDataset *TILDataset::Open( GDALOpenInfo * poOpenInfo )
     if( poTemplateDS == NULL || poTemplateDS->GetRasterCount() == 0)
     {
         delete poDS;
-        CSLDestroy( papszIMD );
         if (poTemplateDS != NULL)
             GDALClose( poTemplateDS );
         return NULL;
@@ -349,8 +370,8 @@ GDALDataset *TILDataset::Open( GDALOpenInfo * poOpenInfo )
     double      adfGeoTransform[6];
     if( poTemplateDS->GetGeoTransform( adfGeoTransform ) == CE_None )
     {
-        adfGeoTransform[0] = CPLAtof(CSLFetchNameValueDef(papszIMD,"MAP_PROJECTED_PRODUCT.ULX","0"));
-        adfGeoTransform[3] = CPLAtof(CSLFetchNameValueDef(papszIMD,"MAP_PROJECTED_PRODUCT.ULY","0"));
+        adfGeoTransform[0] = CPLAtof(CSLFetchNameValueDef(slIMD.List(),"MAP_PROJECTED_PRODUCT.ULX","0"));
+        adfGeoTransform[3] = CPLAtof(CSLFetchNameValueDef(slIMD.List(),"MAP_PROJECTED_PRODUCT.ULY","0"));
         poDS->SetGeoTransform(adfGeoTransform);
     }
 
@@ -396,7 +417,6 @@ GDALDataset *TILDataset::Open( GDALOpenInfo * poOpenInfo )
             CPLError( CE_Failure, CPLE_AppDefined,
                       "Missing TILE_%d.filename in .TIL file.", iTile );
             delete poDS;
-            CSLDestroy( papszIMD );
             return NULL;
         }
         
@@ -446,25 +466,29 @@ GDALDataset *TILDataset::Open( GDALOpenInfo * poOpenInfo )
     }
 
 /* -------------------------------------------------------------------- */
-/*      Set RPC and Commom IMD metadata.                                       */
+/*      Set RPC and Commom IMD metadata.                                */
 /* -------------------------------------------------------------------- */
-	CPLStringList slRPCMD = pmMetadata->find(MDPrefix_RPC)->second;
-	if( slRPCMD.size() != 0 )
+	
+	if(pmMetadata)
 	{
-		poDS->SetMetadata( slRPCMD.List(), "RPC" );
-	}
+		CPLStringList slRPCMD = pmMetadata->find(MDPrefix_RPC)->second;
+		if( slRPCMD.size() != 0 )
+		{
+			poDS->SetMetadata( slRPCMD.List(), "RPC" );
+		}
 
 
-	CPLStringList slCommonIMD = pmMetadata->find(MDPrefix_Common_IMD)->second;
-	if( slCommonIMD.size() != 0 )
-	{
-		poDS->SetMetadata( slCommonIMD.List(), "IMAGERY" );
-	}
+		CPLStringList slCommonIMD = pmMetadata->find(MDPrefix_Common_IMD)->second;
+		if( slCommonIMD.size() != 0 )
+		{
+			poDS->SetMetadata( slCommonIMD.List(), "IMAGERY" );
+		}
 /* -------------------------------------------------------------------- */
 /*      Cleanup                                                         */
 /* -------------------------------------------------------------------- */
-    CSLDestroy( papszIMD );
-	delete pmMetadata; 
+
+		delete pmMetadata; 
+	}
 
 /* -------------------------------------------------------------------- */
 /*      Initialize any PAM information.                                 */
