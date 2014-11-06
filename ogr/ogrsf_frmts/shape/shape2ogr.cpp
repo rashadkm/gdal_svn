@@ -55,7 +55,7 @@ static void RingStartEnd ( SHPObject *psShape, int ring, int *start, int *end )
         *start = psShape->panPartStart[ring];
     }
 }
-    
+
 /************************************************************************/
 /*                        CreateLinearRing                              */
 /*                                                                      */
@@ -72,7 +72,7 @@ static OGRLinearRing * CreateLinearRing ( SHPObject *psShape, int ring, int bHas
     nRingPoints = nRingEnd - nRingStart + 1;
 
     if (bHasZ)
-        poRing->setPoints( nRingPoints, psShape->padfX + nRingStart, 
+        poRing->setPoints( nRingPoints, psShape->padfX + nRingStart,
                            psShape->padfY + nRingStart,
                            psShape->padfZ + nRingStart );
     else
@@ -191,9 +191,9 @@ OGRGeometry *SHPReadOGRObject( SHPHandle hSHP, int iShape, SHPObject *psShape )
         {
             int iRing;
             OGRMultiLineString *poOGRMulti;
-        
+
             poOGR = poOGRMulti = new OGRMultiLineString();
-            
+
             for( iRing = 0; iRing < psShape->nParts; iRing++ )
             {
                 OGRLineString   *poLine;
@@ -251,7 +251,7 @@ OGRGeometry *SHPReadOGRObject( SHPHandle hSHP, int iShape, SHPObject *psShape )
     {
         int iRing;
         int bHasZ = ( psShape->nSHPType == SHPT_POLYGONZ );
-        
+
         //CPLDebug( "Shape", "Shape type: polygon with nParts=%d \n", psShape->nParts );
 
         if ( psShape->nParts == 0 )
@@ -280,12 +280,12 @@ OGRGeometry *SHPReadOGRObject( SHPHandle hSHP, int iShape, SHPObject *psShape )
 
             int isValidGeometry;
             const char* papszOptions[] = { "METHOD=ONLY_CCW", NULL };
-            poOGR = OGRGeometryFactory::organizePolygons( 
+            poOGR = OGRGeometryFactory::organizePolygons(
                 (OGRGeometry**)tabPolygons, psShape->nParts, &isValidGeometry, papszOptions );
 
             if (!isValidGeometry)
             {
-                CPLError(CE_Warning, CPLE_AppDefined, 
+                CPLError(CE_Warning, CPLE_AppDefined,
                         "Geometry of polygon of fid %d cannot be translated to Simple Geometry. "
                         "All polygons will be contained in a multipolygon.\n",
                         iShape);
@@ -316,7 +316,7 @@ OGRGeometry *SHPReadOGRObject( SHPHandle hSHP, int iShape, SHPObject *psShape )
             }
             else
             {
-                
+
                 if( iPart == psShape->nParts - 1 )
                     nPartPoints =
                         psShape->nVertices - psShape->panPartStart[iPart];
@@ -342,24 +342,24 @@ OGRGeometry *SHPReadOGRObject( SHPHandle hSHP, int iShape, SHPObject *psShape )
                     OGRLinearRing *poRing = new OGRLinearRing();
                     int iSrcVert = iBaseVert + nPartStart;
 
-                    poRing->setPoint( 0, 
-                                      psShape->padfX[iSrcVert], 
-                                      psShape->padfY[iSrcVert], 
+                    poRing->setPoint( 0,
+                                      psShape->padfX[iSrcVert],
+                                      psShape->padfY[iSrcVert],
                                       psShape->padfZ[iSrcVert] );
-                    poRing->setPoint( 1, 
-                                      psShape->padfX[iSrcVert+1], 
-                                      psShape->padfY[iSrcVert+1], 
+                    poRing->setPoint( 1,
+                                      psShape->padfX[iSrcVert+1],
+                                      psShape->padfY[iSrcVert+1],
                                       psShape->padfZ[iSrcVert+1] );
 
-                    poRing->setPoint( 2, 
-                                      psShape->padfX[iSrcVert+2], 
-                                      psShape->padfY[iSrcVert+2], 
+                    poRing->setPoint( 2,
+                                      psShape->padfX[iSrcVert+2],
+                                      psShape->padfY[iSrcVert+2],
                                       psShape->padfZ[iSrcVert+2] );
-                    poRing->setPoint( 3, 
-                                      psShape->padfX[iSrcVert], 
-                                      psShape->padfY[iSrcVert], 
+                    poRing->setPoint( 3,
+                                      psShape->padfX[iSrcVert],
+                                      psShape->padfY[iSrcVert],
                                       psShape->padfZ[iSrcVert] );
-                        
+
                     poPoly->addRingDirectly( poRing );
                     poMP->addGeometryDirectly( poPoly );
                 }
@@ -380,24 +380,24 @@ OGRGeometry *SHPReadOGRObject( SHPHandle hSHP, int iShape, SHPObject *psShape )
                     OGRLinearRing *poRing = new OGRLinearRing();
                     int iSrcVert = iBaseVert + nPartStart;
 
-                    poRing->setPoint( 0, 
-                                      psShape->padfX[nPartStart], 
+                    poRing->setPoint( 0,
+                                      psShape->padfX[nPartStart],
                                       psShape->padfY[nPartStart],
                                       psShape->padfZ[nPartStart] );
-                    poRing->setPoint( 1, 
-                                      psShape->padfX[iSrcVert+1], 
-                                      psShape->padfY[iSrcVert+1], 
+                    poRing->setPoint( 1,
+                                      psShape->padfX[iSrcVert+1],
+                                      psShape->padfY[iSrcVert+1],
                                       psShape->padfZ[iSrcVert+1] );
 
-                    poRing->setPoint( 2, 
-                                      psShape->padfX[iSrcVert+2], 
-                                      psShape->padfY[iSrcVert+2], 
+                    poRing->setPoint( 2,
+                                      psShape->padfX[iSrcVert+2],
+                                      psShape->padfY[iSrcVert+2],
                                       psShape->padfZ[iSrcVert+2] );
-                    poRing->setPoint( 3, 
-                                      psShape->padfX[nPartStart], 
-                                      psShape->padfY[nPartStart], 
+                    poRing->setPoint( 3,
+                                      psShape->padfX[nPartStart],
+                                      psShape->padfY[nPartStart],
                                       psShape->padfZ[nPartStart] );
-                        
+
                     poPoly->addRingDirectly( poRing );
                     poMP->addGeometryDirectly( poPoly );
                 }
@@ -407,7 +407,7 @@ OGRGeometry *SHPReadOGRObject( SHPHandle hSHP, int iShape, SHPObject *psShape )
                      || psShape->panPartType[iPart] == SHPP_FIRSTRING
                      || psShape->panPartType[iPart] == SHPP_RING )
             {
-                if( poLastPoly != NULL 
+                if( poLastPoly != NULL
                     && (psShape->panPartType[iPart] == SHPP_OUTERRING
                         || psShape->panPartType[iPart] == SHPP_FIRSTRING) )
                 {
@@ -418,11 +418,11 @@ OGRGeometry *SHPReadOGRObject( SHPHandle hSHP, int iShape, SHPObject *psShape )
                 if( poLastPoly == NULL )
                     poLastPoly = new OGRPolygon();
 
-                poLastPoly->addRingDirectly( 
+                poLastPoly->addRingDirectly(
                     CreateLinearRing( psShape, iPart, TRUE ) );
             }
             else
-                CPLDebug( "OGR", "Unrecognised parttype %d, ignored.", 
+                CPLDebug( "OGR", "Unrecognised parttype %d, ignored.",
                           psShape->panPartType[iPart] );
         }
 
@@ -447,7 +447,7 @@ OGRGeometry *SHPReadOGRObject( SHPHandle hSHP, int iShape, SHPObject *psShape )
 
         /* nothing returned */
     }
-    
+
 /* -------------------------------------------------------------------- */
 /*      Cleanup shape, and set feature id.                              */
 /* -------------------------------------------------------------------- */
@@ -493,7 +493,7 @@ OGRErr SHPWriteOGRObject( SHPHandle hSHP, int iShape, OGRGeometry *poGeom )
         double          dfX, dfY, dfZ = 0;
 
         if( poGeom->getGeometryType() != wkbPoint
-            && poGeom->getGeometryType() != wkbPoint25D )        
+            && poGeom->getGeometryType() != wkbPoint25D )
         {
             CPLError( CE_Failure, CPLE_AppDefined,
                       "Attempt to write non-point (%s) geometry to"
@@ -506,7 +506,7 @@ OGRErr SHPWriteOGRObject( SHPHandle hSHP, int iShape, OGRGeometry *poGeom )
         dfX = poPoint->getX();
         dfY = poPoint->getY();
         dfZ = poPoint->getZ();
-        
+
         psShape = SHPCreateSimpleObject( hSHP->nShapeType, 1,
                                          &dfX, &dfY, &dfZ );
         nReturnedShapeID = SHPWriteObject( hSHP, iShape, psShape );
@@ -554,7 +554,7 @@ OGRErr SHPWriteOGRObject( SHPHandle hSHP, int iShape, OGRGeometry *poGeom )
                 iDstPoints ++;
             }
             else
-                CPLDebug( "OGR", 
+                CPLDebug( "OGR",
                               "Ignore POINT EMPTY inside MULTIPOINT in shapefile writer." );
         }
 
@@ -563,7 +563,7 @@ OGRErr SHPWriteOGRObject( SHPHandle hSHP, int iShape, OGRGeometry *poGeom )
                                          padfX, padfY, padfZ );
         nReturnedShapeID = SHPWriteObject( hSHP, iShape, psShape );
         SHPDestroyObject( psShape );
-        
+
         CPLFree( padfX );
         CPLFree( padfY );
         CPLFree( padfZ );
@@ -600,7 +600,7 @@ OGRErr SHPWriteOGRObject( SHPHandle hSHP, int iShape, OGRGeometry *poGeom )
                                          padfX, padfY, padfZ );
         nReturnedShapeID = SHPWriteObject( hSHP, iShape, psShape );
         SHPDestroyObject( psShape );
-        
+
         CPLFree( padfX );
         CPLFree( padfY );
         CPLFree( padfZ );
@@ -621,7 +621,7 @@ OGRErr SHPWriteOGRObject( SHPHandle hSHP, int iShape, OGRGeometry *poGeom )
         int             *panRingStart;
         int             nParts = 0;
 
-        poML = (OGRMultiLineString *) 
+        poML = (OGRMultiLineString *)
             OGRGeometryFactory::forceToMultiLineString( poGeom->clone() );
 
         if( wkbFlatten(poML->getGeometryType()) != wkbMultiLineString )
@@ -635,7 +635,7 @@ OGRErr SHPWriteOGRObject( SHPHandle hSHP, int iShape, OGRGeometry *poGeom )
             return OGRERR_UNSUPPORTED_GEOMETRY_TYPE;
         }
 
-        panRingStart = (int *) 
+        panRingStart = (int *)
             CPLMalloc(sizeof(int) * poML->getNumGeometries());
 
         for( iGeom = 0; iGeom < poML->getNumGeometries(); iGeom++ )
@@ -647,18 +647,18 @@ OGRErr SHPWriteOGRObject( SHPHandle hSHP, int iShape, OGRGeometry *poGeom )
             /* Ignore LINESTRING EMPTY */
             if (nNewPoints == 0)
             {
-                CPLDebug( "OGR", 
+                CPLDebug( "OGR",
                           "Ignore LINESTRING EMPTY inside MULTILINESTRING in shapefile writer." );
                 continue;
             }
 
             panRingStart[nParts ++] = nPointCount;
 
-            padfX = (double *) 
+            padfX = (double *)
                 CPLRealloc( padfX, sizeof(double)*(nNewPoints+nPointCount) );
-            padfY = (double *) 
+            padfY = (double *)
                 CPLRealloc( padfY, sizeof(double)*(nNewPoints+nPointCount) );
-            padfZ = (double *) 
+            padfZ = (double *)
                 CPLRealloc( padfZ, sizeof(double)*(nNewPoints+nPointCount) );
 
             for( iPoint = 0; iPoint < nNewPoints; iPoint++ )
@@ -672,8 +672,8 @@ OGRErr SHPWriteOGRObject( SHPHandle hSHP, int iShape, OGRGeometry *poGeom )
 
         CPLAssert(nParts != 0);
 
-        psShape = SHPCreateObject( hSHP->nShapeType, iShape, 
-                                    nParts, 
+        psShape = SHPCreateObject( hSHP->nShapeType, iShape,
+                                    nParts,
                                     panRingStart, NULL,
                                     nPointCount, padfX, padfY, padfZ, NULL);
         nReturnedShapeID = SHPWriteObject( hSHP, iShape, psShape );
@@ -711,7 +711,7 @@ OGRErr SHPWriteOGRObject( SHPHandle hSHP, int iShape, OGRGeometry *poGeom )
             if( poPoly->getExteriorRing() == NULL ||
                 poPoly->getExteriorRing()->IsEmpty() )
             {
-                CPLDebug( "OGR", 
+                CPLDebug( "OGR",
                           "Ignore POLYGON EMPTY in shapefile writer." );
                 nRings = 0;
             }
@@ -731,13 +731,13 @@ OGRErr SHPWriteOGRObject( SHPHandle hSHP, int iShape, OGRGeometry *poGeom )
                     if (papoRings[nRings]->getNumPoints() != 0)
                         nRings ++;
                     else
-                        CPLDebug( "OGR", 
+                        CPLDebug( "OGR",
                                 "Ignore LINEARRING EMPTY inside POLYGON in shapefile writer." );
                 }
             }
         }
         else if( wkbFlatten(poGeom->getGeometryType()) == wkbMultiPolygon
-                 || wkbFlatten(poGeom->getGeometryType()) 
+                 || wkbFlatten(poGeom->getGeometryType())
                                                 == wkbGeometryCollection )
         {
             OGRGeometryCollection *poGC = (OGRGeometryCollection *) poGeom;
@@ -763,33 +763,33 @@ OGRErr SHPWriteOGRObject( SHPHandle hSHP, int iShape, OGRGeometry *poGeom )
                 if( poPoly->getExteriorRing() == NULL ||
                     poPoly->getExteriorRing()->IsEmpty() )
                 {
-                    CPLDebug( "OGR", 
+                    CPLDebug( "OGR",
                               "Ignore POLYGON EMPTY inside MULTIPOLYGON in shapefile writer." );
                     continue;
                 }
 
-                papoRings = (OGRLinearRing **) CPLRealloc(papoRings, 
+                papoRings = (OGRLinearRing **) CPLRealloc(papoRings,
                      sizeof(void*) * (nRings+poPoly->getNumInteriorRings()+1));
-                for( iRing = 0; 
-                     iRing < poPoly->getNumInteriorRings()+1; 
+                for( iRing = 0;
+                     iRing < poPoly->getNumInteriorRings()+1;
                      iRing++ )
                 {
                     if( iRing == 0 )
                         papoRings[nRings] = poPoly->getExteriorRing();
                     else
-                        papoRings[nRings] = 
+                        papoRings[nRings] =
                             poPoly->getInteriorRing( iRing-1 );
 
                     /* Ignore LINEARRING EMPTY */
                     if (papoRings[nRings]->getNumPoints() != 0)
                         nRings ++;
                     else
-                        CPLDebug( "OGR", 
+                        CPLDebug( "OGR",
                               "Ignore LINEARRING EMPTY inside POLYGON in shapefile writer." );
                 }
             }
         }
-        else 
+        else
         {
             CPLError( CE_Failure, CPLE_AppDefined,
                       "Attempt to write non-polygon (%s) geometry to "
@@ -806,7 +806,7 @@ OGRErr SHPWriteOGRObject( SHPHandle hSHP, int iShape, OGRGeometry *poGeom )
         if( nRings == 0 )
         {
             SHPObject       *psShape;
-            
+
             psShape = SHPCreateSimpleObject( SHPT_NULL, 0, NULL, NULL, NULL );
             nReturnedShapeID = SHPWriteObject( hSHP, iShape, psShape );
             SHPDestroyObject( psShape );
@@ -816,7 +816,7 @@ OGRErr SHPWriteOGRObject( SHPHandle hSHP, int iShape, OGRGeometry *poGeom )
 
             return OGRERR_NONE;
         }
-        
+
         /* count vertices */
         nVertex = 0;
         for( iRing = 0; iRing < nRings; iRing++ )
@@ -849,7 +849,7 @@ OGRErr SHPWriteOGRObject( SHPHandle hSHP, int iShape, OGRGeometry *poGeom )
         SHPRewindObject( hSHP, psShape );
         nReturnedShapeID = SHPWriteObject( hSHP, iShape, psShape );
         SHPDestroyObject( psShape );
-        
+
         CPLFree( papoRings );
         CPLFree( panRingStart );
         CPLFree( padfX );
@@ -881,8 +881,8 @@ OGRFeatureDefn *SHPReadOGRFeatureDefn( const char * pszName,
 
     poDefn->Reference();
 
-    for( iField = 0; 
-         hDBF != NULL && iField < DBFGetFieldCount( hDBF ); 
+    for( iField = 0;
+         hDBF != NULL && iField < DBFGetFieldCount( hDBF );
          iField++ )
     {
         char            szFieldName[12] = {};
@@ -971,7 +971,7 @@ OGRFeatureDefn *SHPReadOGRFeatureDefn( const char * pszName,
           case SHPT_POLYGONM:
             poDefn->SetGeomType( wkbPolygon25D );
             break;
-            
+
         }
     }
 
@@ -987,11 +987,11 @@ OGRFeature *SHPReadOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
                                SHPObject *psShape, const char *pszSHPEncoding )
 
 {
-    if( iShape < 0 
+    if( iShape < 0
         || (hSHP != NULL && iShape >= hSHP->nRecords)
         || (hDBF != NULL && iShape >= hDBF->nRecords) )
     {
-        CPLError( CE_Failure, CPLE_AppDefined, 
+        CPLError( CE_Failure, CPLE_AppDefined,
                   "Attempt to read shape with feature id (%d) out of available"
                   " range.", iShape );
         return NULL;
@@ -999,7 +999,7 @@ OGRFeature *SHPReadOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
 
     if( hDBF && DBFIsRecordDeleted( hDBF, iShape ) )
     {
-        CPLError( CE_Failure, CPLE_AppDefined, 
+        CPLError( CE_Failure, CPLE_AppDefined,
                   "Attempt to read shape with feature id (%d), but it is marked deleted.",
                   iShape );
         return NULL;
@@ -1048,7 +1048,7 @@ OGRFeature *SHPReadOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
         {
           case OFTString:
           {
-              const char *pszFieldVal = 
+              const char *pszFieldVal =
                   DBFReadStringAttribute( hDBF, iShape, iField );
               if( pszFieldVal != NULL && pszFieldVal[0] != '\0' )
               {
@@ -1086,7 +1086,7 @@ OGRFeature *SHPReadOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
               if( DBFIsAttributeNULL( hDBF, iShape, iField ) )
                   continue;
 
-              const char* pszDateValue = 
+              const char* pszDateValue =
                   DBFReadStringAttribute(hDBF,iShape,iField);
 
               /* Some DBF files have fields filled with spaces */
@@ -1111,7 +1111,7 @@ OGRFeature *SHPReadOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
                   sFld.Date.Month = (GByte)((nFullDate / 100) % 100);
                   sFld.Date.Day = (GByte)(nFullDate % 100);
               }
-              
+
               poFeature->SetField( iField, &sFld );
           }
           break;
@@ -1169,7 +1169,7 @@ static OGRErr GrowField(DBFHandle hDBF, int iField, OGRFieldDefn* poFieldDefn,
 /************************************************************************/
 
 OGRErr SHPWriteOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
-                           OGRFeatureDefn * poDefn, 
+                           OGRFeatureDefn * poDefn,
                            OGRFeature * poFeature,
                            const char *pszSHPEncoding,
                            int* pbTruncationWarningEmitted )
@@ -1184,7 +1184,7 @@ OGRErr SHPWriteOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
         CPLError( CE_Failure, CPLE_AppDefined,
                   "Attempt to write feature without geometry not supported"
                   " for shapefile driver." );
-        
+
         return OGRERR_UNSUPPORTED_GEOMETRY_TYPE;
     }
 #endif
@@ -1201,7 +1201,7 @@ OGRErr SHPWriteOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
         if( eErr != OGRERR_NONE )
             return eErr;
     }
-    
+
 /* -------------------------------------------------------------------- */
 /*      If there is no DBF, the job is done now.                        */
 /* -------------------------------------------------------------------- */
@@ -1230,7 +1230,7 @@ OGRErr SHPWriteOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
 /* -------------------------------------------------------------------- */
     if( DBFGetRecordCount( hDBF ) == 0 && DBFGetFieldCount( hDBF ) == 0 )
     {
-        CPLDebug( "OGR", 
+        CPLDebug( "OGR",
                "Created dummy FID field for shapefile since schema is empty.");
         DBFAddField( hDBF, "FID", FTInteger, 11, 0 );
     }
@@ -1240,7 +1240,7 @@ OGRErr SHPWriteOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
 /* -------------------------------------------------------------------- */
     if( DBFGetFieldCount( hDBF ) == 1 && poDefn->GetFieldCount() == 0 )
     {
-        DBFWriteIntegerAttribute( hDBF, poFeature->GetFID(), 0, 
+        DBFWriteIntegerAttribute( hDBF, poFeature->GetFID(), 0,
                                   poFeature->GetFID() );
     }
 
@@ -1283,7 +1283,34 @@ OGRErr SHPWriteOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
                             poFieldDefn->GetNameRef(),
                             OGR_DBF_MAX_FIELD_WIDTH);
                 }
+
                 nStrLen = OGR_DBF_MAX_FIELD_WIDTH;
+
+                //if(EQUALN(pszSHPEncoding, "UTF", 3))
+                //{
+                    if(NULL == pszEncoded)
+                    {
+                        pszEncoded = (char*)CPLMalloc(nStrLen);
+                        CPLStrlcpy(pszEncoded, pszStr, nStrLen);
+                        pszStr = pszEncoded;
+                    }
+
+                    nStrLen -= 2;
+                    const char *p = pszStr + nStrLen;
+                    int byteCount = nStrLen;
+                    while(byteCount > 0)
+                    {
+                        if( (*p & 0xc0) != 0x80 )
+                        {
+                            nStrLen = byteCount;
+                            break;
+                        }
+
+                        byteCount--;
+                        p--;
+                    }
+
+                    pszEncoded[nStrLen] = 0;
               }
 
               if ( nStrLen > poFieldDefn->GetWidth() )
@@ -1318,13 +1345,13 @@ OGRErr SHPWriteOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
                   }
               }
 
-              DBFWriteAttributeDirectly( hDBF, poFeature->GetFID(), iField, 
+              DBFWriteAttributeDirectly( hDBF, poFeature->GetFID(), iField,
                                                 szValue );
             break;
           }
 
           case OFTReal:
-            DBFWriteDoubleAttribute( hDBF, poFeature->GetFID(), iField, 
+            DBFWriteDoubleAttribute( hDBF, poFeature->GetFID(), iField,
                                      poFeature->GetFieldAsDouble(iField) );
             break;
 
@@ -1341,7 +1368,7 @@ OGRErr SHPWriteOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
                                "Year < 0 or > 9999 is not a valid date for shapefile");
                   }
                   else
-                      DBFWriteIntegerAttribute( hDBF, poFeature->GetFID(), iField, 
+                      DBFWriteIntegerAttribute( hDBF, poFeature->GetFID(), iField,
                                             nYear*10000 + nMonth*100 + nDay );
               }
           }
