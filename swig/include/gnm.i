@@ -31,24 +31,35 @@
 
 %module gnm
 
-
-
 %{
 #include "gnm_api.h"
+#include "analysis/gnmstdanalysis.h"
 
 typedef void GNMNetworkShadow;
 typedef void GNMGdalNetworkShadow;
 typedef void GDALDatasetShadow;
 typedef void OGRLayerShadow;
+typedef void GNMGdalStdAnalyserShadow;
+typedef void GNMGdalStdRoutingAnalyserShadow;
+typedef void OGRFeatureShadow;
 %}
 
-//typedef int GNMGFIDShadow;
-//typedef int GNMDirectionShadow;
+
+%include "std_vector.i"
+%include "std_pair.i"
+namespace std {
+    %template(Pair) pair<int,int>;
+    %template(PairVector) vector<pair<int,int> >;
+}
 
 
-//#if defined(SWIGPYTHON)
-//%include "gdal_python.i"
-//#endif
+// Duplicate error codes.
+typedef int GNMErr;
+#define GNMERR_NONE 0
+#define GNMERR_FAILURE 1
+#define GNMERR_UNSUPPORTED 2
+#define GNMERR_NOTFOUND 3
+#define GNMERR_CONRULE_RESTRICT 4
 
 
 /************************** GdalCreateNetwork **********************************/
@@ -123,18 +134,6 @@ int GdalCreateRule (GNMGdalNetworkShadow *sNet,const char *pszRuleStr)
 
 
 /************************** GdalConnect **************************************/
-/*
-GNMErr GNMGdalConnectFeatures (GNMGdalNetworkH hNet,GNMGFID nSrcGFID,
-                                    GNMGFID nTgtGFID,GNMGFID nConGFID,
-                                    double dCost,double dInvCost,
-                                    GNMDirection nDir)
-{
-    VALIDATE_POINTER1( hNet, "GNMGdalConnectFeatures", GNMERR_FAILURE );
-
-    return ((GNMGdalNetwork*)hNet)->ConnectFeatures(nSrcGFID,nTgtGFID,nConGFID,
-                                                dCost,dInvCost,nDir);
-}
-*/
 %inline %{
 int GdalConnect (GNMGdalNetworkShadow *sNet, int nSrcGFID,
                  int nTgtGFID, int nConGFID,
@@ -147,3 +146,69 @@ int GdalConnect (GNMGdalNetworkShadow *sNet, int nSrcGFID,
 }
 %}
 
+
+/************************** new_GdalStdAnalyser **************************************/
+// How else to allocate new objects which does not have special creating methods 
+// (like e.g. OGRFeature::CreateFeature()) in python ?
+%newobject new_GdalStdAnalyser;
+%inline %{
+GNMGdalStdAnalyserShadow *new_GdalStdAnalyser ()
+{
+    return (GNMGdalStdAnalyserShadow *) new GNMGdalStdAnalyser();
+}
+%}
+/************************** new_GdalStdRoutingAnalyser **************************************/
+%newobject new_GdalStdRoutingAnalyser;
+%inline %{
+GNMGdalStdRoutingAnalyserShadow *new_GdalStdRoutingAnalyser ()
+{
+    return (GNMGdalStdRoutingAnalyserShadow *) new GNMGdalStdRoutingAnalyser();
+}
+%}
+
+/************************** GdalStdAnalyserPrepareGraph **************************************/
+// TODO: Implement GNMGdalStdAnalyser class and all its subclasses here so to call analysing methods from objects.
+// TODO: Or create C methods.
+%inline %{
+GNMErr GdalStdAnalyserPrepareGraph (GNMGdalStdAnalyserShadow *analyser, GNMGdalNetworkShadow *network)
+{
+    return ((GNMGdalStdAnalyser*)analyser)->PrepareGraph((GNMGdalNetwork*)network);
+}
+%}
+
+
+/************************** GdalStdAnalyserDijkstra **************************************/
+%inline %{
+std::vector<std::pair<int,int> > GdalStdAnalyserDijkstra (GNMGdalStdAnalyserShadow *analyser, int startVertGFID, int endVertGFID)
+{
+    return (std::vector<std::pair<int,int> >)((GNMGdalStdAnalyser*)analyser)->DijkstraShortestPath(startVertGFID,endVertGFID);
+}
+%}
+
+
+/************************** GdalGetFeatureByGFID **************************************/
+// TODO: Create and use C method here.
+%newobject GdalGetFeatureByGFID;
+%inline %{
+OGRFeatureShadow *GdalGetFeatureByGFID (GNMGdalNetworkShadow *network, int GFID)
+{
+    return (OGRFeatureShadow*)((GNMGdalNetwork*)network)->GetFeatureByGFID(GFID);
+}
+%}
+
+
+/************************** GdalStdAnalyserBlockVertex **************************************/
+%inline %{
+GNMErr GdalStdAnalyserBlockVertex (GNMGdalStdAnalyserShadow *analyser, int GFID)
+{
+    return ((GNMGdalStdAnalyser*)analyser)->BlockVertex(GFID);
+}
+%}
+
+/************************** GdalStdAnalyserUnblockVertex **************************************/
+%inline %{
+GNMErr GdalStdAnalyserUnblockVertex (GNMGdalStdAnalyserShadow *analyser, int GFID)
+{
+    return ((GNMGdalStdAnalyser*)analyser)->UnblockVertex(GFID);
+}
+%}

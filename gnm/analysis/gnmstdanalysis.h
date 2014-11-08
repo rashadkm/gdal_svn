@@ -28,6 +28,9 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
+#ifndef _GNMSTDANALYSIS_H_INCLUDED
+#define _GNMSTDANALYSIS_H_INCLUDED
+
 #include "gnm.h"
 
 #include <queue>
@@ -116,6 +119,10 @@ class CPL_DLL GNMStdAnalyser
             GNMGFID nEndVertGFID,
             int nK);
 
+    GNMErr BlockVertex (GNMGFID gfid) {return _block(gfid);}
+
+    GNMErr UnblockVertex (GNMGFID gfid) {return _unblock(gfid);}
+
     // ... Extend the class adding new generic algorithms ...
 };
 
@@ -196,5 +203,5 @@ class CPL_DLL GNMGdalStdCommutationsAnalyser: public GNMGdalStdAnalyser
     // ... Extend the class adding new commutation analysis methods ...
 };
 
-
+#endif
 
