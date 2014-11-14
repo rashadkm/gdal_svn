@@ -602,7 +602,6 @@ int main( int nArgc, char ** papszArgv )
 				layersToConnect.push_back(poDS->GetLayer(i));
             }
             //layers[cnt] = NULL;
-			
 
             //GNMErr err = poNet->AutoConnect(layers,tol,NULL);
 			GNMErr err = poNet->AutoConnect(layersToConnect,tol,NULL);

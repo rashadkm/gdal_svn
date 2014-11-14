@@ -1131,12 +1131,15 @@ GNMErr GNMGdalNetwork::ConnectFeatures (GNMGFID nSrcGFID,GNMGFID nTgtGFID,
     feature->SetField(GNM_SYSFIELD_COST, dCost);
     feature->SetField(GNM_SYSFIELD_INVCOST, dInvCost);
     feature->SetField(GNM_SYSFIELD_DIRECTION, nDir);
+	graphLayer->StartTransaction();
     if(graphLayer->CreateFeature(feature) != OGRERR_NONE)
     {
         // TODO: delete system edge if it was created.
         OGRFeature::DestroyFeature(feature);
+		graphLayer->RollbackTransaction();
         return GNMERR_FAILURE;
     }
+	graphLayer->CommitTransaction();
     OGRFeature::DestroyFeature(feature);
 
     return GNMERR_NONE;
