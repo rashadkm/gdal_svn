@@ -594,14 +594,18 @@ int main( int nArgc, char ** papszArgv )
             printf("\nBuilding topology ...\n");
             GDALDataset *poDS = poNet->GetDataset();
             int cnt = poDS->GetLayerCount();
-            OGRLayer **layers = new OGRLayer*[cnt+1];
+			std::vector<OGRLayer*> layersToConnect;
+            //OGRLayer **layers = new OGRLayer*[cnt+1];
             for (int i = 0; i < cnt; i++)
             {
-                layers[i] = poDS->GetLayer(i);
+				//layers[i] = poDS->GetLayer(i);
+				layersToConnect.push_back(poDS->GetLayer(i));
             }
-            layers[cnt] = NULL;
+            //layers[cnt] = NULL;
+			
 
-            GNMErr err = poNet->AutoConnect(layers,tol,NULL);
+            //GNMErr err = poNet->AutoConnect(layers,tol,NULL);
+			GNMErr err = poNet->AutoConnect(layersToConnect,tol,NULL);
             if (err != GNMERR_NONE)
             {
                 fprintf(stderr, "\nFAILURE: Building topology failed\n");
@@ -610,7 +614,7 @@ int main( int nArgc, char ** papszArgv )
             {
                 printf("\nTopology has been built successfully\n");
             }
-            delete[] layers;
+            //delete[] layers;
             GNMManager::GdalCloseNetwork(poNet);
         }
         else

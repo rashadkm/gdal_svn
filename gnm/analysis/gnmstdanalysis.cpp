@@ -30,6 +30,7 @@
 
 #include "gnmstdanalysis.h"
 #include <limits>
+#include "gnm_api.h"
 
 /************************************************************************/
 /*                   Constructor&destructor                             */
@@ -1334,3 +1335,12 @@ OGRLayer *GNMGdalStdCommutationsAnalyser::ResourceDestribution ()
 
 
 
+GNMStdAnalyserH GNMCreateStdAnalyser ()
+{
+	return (GNMStdAnalyserH) new GNMStdAnalyser();
+}
+
+void GNMDeleteStdAnalyser (GNMStdAnalyserH hAnalyser)
+{
+	delete (GNMStdAnalyser*)hAnalyser;
+}

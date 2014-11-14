@@ -359,7 +359,7 @@ GNMErr GNMGdalNetwork::DeleteLayer (const char *pszName)
  */
 GNMErr GNMGdalNetwork::CopyLayer (OGRLayer *poSrcLayer, const char *pszNewName)
 {
-    if(poSrcLayer == NULL || pszNewName == NULL)
+    if (poSrcLayer == NULL || pszNewName == NULL)
     {
         //CPLErr
         return GNMERR_FAILURE;
@@ -391,30 +391,43 @@ GNMErr GNMGdalNetwork::CopyLayer (OGRLayer *poSrcLayer, const char *pszNewName)
             allowTransformation = true;
     }
 
-    // Copy all features.
-    OGRLayer *gfidLayer = _poDataSet->GetLayerByName(GNM_SYSLAYER_META);
-    OGRLayer *featLayer = _poDataSet->GetLayerByName(GNM_SYSLAYER_FEATURES);
-    const char *newLayerName = newLayer->GetName();
-    OGRFeature *gfidFeature = gfidLayer->GetFeature(_meta_gfidcntr_i);
-    GNMGFID gfidCounter = gfidFeature->GetFieldAsInteger(GNM_SYSFIELD_PARAMVALUE);
-    //OGRLayer *newLayer = _poDataSet->GetLayerByName(newName);
-    int count = fDefn->GetFieldCount();
-    OGRFeature *sourceFeature;
+	// Read gfid counter.
+	OGRLayer *metaLayer = _poDataSet->GetLayerByName(GNM_SYSLAYER_META);
+	OGRFeature *gfidFeature = metaLayer->GetFeature(_meta_gfidcntr_i);
+	GNMGFID gfidCounter = gfidFeature->GetFieldAsInteger(GNM_SYSFIELD_PARAMVALUE);
+
+	//CPLSetConfigOption("PG_USE_COPY","NO");
+
+	// Read all source features.
+	OGRFeature *sourceFeature;
     poSrcLayer->ResetReading();
+	std::vector<OGRFeature*> srcFeatures;
     while((sourceFeature = poSrcLayer->GetNextFeature()) != NULL)
     {
-        // Create new feature with new layer definition.
+		srcFeatures.push_back(sourceFeature);
+	}
+
+	// Iterate source features and copy them to the new layer.
+    int count = fDefn->GetFieldCount();
+	newLayer->StartTransaction(); // We need to start and commit transaction for database datasets.
+	std::vector<OGRFeature*>::iterator itSF;
+	std::vector<OGRFeature*> newFeatures;
+	for (itSF = srcFeatures.begin(); itSF != srcFeatures.end(); ++itSF)
+	{
+		// Create new feature with new layer definition.
         OGRFeature *newFeature = OGRFeature::CreateFeature(newLayer->GetLayerDefn());
         if (newFeature == NULL)
         {
             //CPLErr
+			// IMPORTANT TODO: Delete new layer name from classes system table.
             // ISSUE: Delete all features copied earlier?
+			// TODO: rollback transaction
             return GNMERR_FAILURE;
         }
 
         // Get the geometry from the source feature. Transform it if
         // the feature exists and a transformation object has been defined.
-        OGRGeometry *newGeom = sourceFeature->StealGeometry();
+        OGRGeometry *newGeom = (*itSF)->StealGeometry();
         if (newGeom != NULL)
         {
             if (allowTransformation)
@@ -423,49 +436,38 @@ GNMErr GNMGdalNetwork::CopyLayer (OGRLayer *poSrcLayer, const char *pszNewName)
         }
 
         // Copy source feature fid.
-        long fid = sourceFeature->GetFID();
+        long fid = (*itSF)->GetFID();
         newFeature->SetFID(fid);
 
-        // Write this feature to the special system layer.
-        OGRFeature *featFeature = OGRFeature::CreateFeature(featLayer->GetLayerDefn());
-        featFeature->SetField(GNM_SYSFIELD_GFID,gfidCounter);
-        featFeature->SetField(GNM_SYSFIELD_LAYERNAME,newLayerName);
-        featFeature->SetField(GNM_SYSFIELD_FID,(int)fid);
-        if (featLayer->CreateFeature(featFeature) != OGRERR_NONE)
-        {
-            //CPLErr
-            // ISSUE: Delete all features copied earlier?
-            OGRFeature::DestroyFeature(newFeature);
-            OGRFeature::DestroyFeature(sourceFeature);
-            OGRFeature::DestroyFeature(featFeature);
-            return GNMERR_FAILURE;
-        }
-        OGRFeature::DestroyFeature(featFeature);
+		// NOTE: we can't write the feature to the featLayer here, because it breaks the transaction
+		// for the newLayer.
 
         // Assign new gfid.
         newFeature->SetField(GNM_SYSFIELD_GFID, gfidCounter);
         gfidCounter++;
 
+		//CPLSetConfigOption
+
         // Copy source feature attribute values.
         for (int i = 0; i < count; i++)
         {
-            if (sourceFeature->IsFieldSet(i) == TRUE)
+            if ((*itSF)->IsFieldSet(i) == TRUE)
             {
                 OGRFieldType fType = fDefn->GetFieldDefn(i)->GetType();
                 const char *fName = fDefn->GetFieldDefn(i)->GetNameRef();
                 switch (fType)
                 {
                     case OFTInteger:
-                        newFeature->SetField(fName, sourceFeature->GetFieldAsInteger(i));
+                        newFeature->SetField(fName, (*itSF)->GetFieldAsInteger(i));
                     break;
                     case OFTReal:
                         // ISSUE: understand why several fields like ..\..\data\belarus ->
                         // field OSM_ID are copied incorrectly (the values extends the
                         // type maximum value).
-                        newFeature->SetField(fName, sourceFeature->GetFieldAsDouble(i));
+                        newFeature->SetField(fName, (*itSF)->GetFieldAsDouble(i));
                     break;
                     default:
-                        newFeature->SetField(fName, sourceFeature->GetFieldAsString(i));
+                        newFeature->SetField(fName, (*itSF)->GetFieldAsString(i));
                     break;
                     // TODO: widen this list.
                     //...
@@ -478,21 +480,61 @@ GNMErr GNMGdalNetwork::CopyLayer (OGRLayer *poSrcLayer, const char *pszNewName)
         {
             //CPLErr
             OGRFeature::DestroyFeature(newFeature);
-            OGRFeature::DestroyFeature(sourceFeature);
+            OGRFeature::DestroyFeature((*itSF));
             if (allowTransformation)
                 OCTDestroyCoordinateTransformation(
                         (OGRCoordinateTransformationH)transform);
+			// IMPORTANT TODO: Delete new layer name from classes system table.
+			newLayer->RollbackTransaction();
             return GNMERR_FAILURE;
         }
 
-        OGRFeature::DestroyFeature(newFeature);
-        OGRFeature::DestroyFeature(sourceFeature);
+		newFeatures.push_back(newFeature);
+
+        //OGRFeature::DestroyFeature(newFeature);
+        OGRFeature::DestroyFeature(*itSF);
     }
 
+	newLayer->CommitTransaction();
+
+	// Register new features in the special system layer.
+	const char *newLayerName = newLayer->GetName();
+	OGRLayer *featLayer = _poDataSet->GetLayerByName(GNM_SYSLAYER_FEATURES);
+	featLayer->StartTransaction();
+	newLayer->ResetReading();
+	//OGRFeature *newFeature;
+	//while ((newFeature = newLayer->GetNextFeature()) != NULL)
+	std::vector<OGRFeature*>::iterator itNF;
+	for (itNF = newFeatures.begin(); itNF != newFeatures.end(); ++itNF)
+	{
+		OGRFeature *featFeature = OGRFeature::CreateFeature(featLayer->GetLayerDefn());
+		featFeature->SetField(GNM_SYSFIELD_GFID,(*itNF)->GetFieldAsInteger(GNM_SYSFIELD_GFID));
+        featFeature->SetField(GNM_SYSFIELD_LAYERNAME,newLayerName);
+		featFeature->SetField(GNM_SYSFIELD_FID,(*itNF)->GetFID());
+        if (featLayer->CreateFeature(featFeature) != OGRERR_NONE)
+        {
+            //CPLErr
+			// IMPORTANT TODO: Delete new layer name from classes system table.
+            // TODO: Delete the according new feature.
+            //OGRFeature::DestroyFeature(newFeature);
+			OGRFeature::DestroyFeature((*itNF));
+            OGRFeature::DestroyFeature(featFeature);
+
+			featLayer->RollbackTransaction();
+            return GNMERR_FAILURE;
+        }
+        //OGRFeature::DestroyFeature(newFeature);
+		OGRFeature::DestroyFeature((*itNF));
+        OGRFeature::DestroyFeature(featFeature);
+	}
+	featLayer->CommitTransaction();
+
     // Save gfid counter.
+	//metaLayer->StartTransaction();
     gfidFeature->SetField(GNM_SYSFIELD_PARAMVALUE,gfidCounter);
-    gfidLayer->SetFeature(gfidFeature);
+    metaLayer->SetFeature(gfidFeature);
     OGRFeature::DestroyFeature(gfidFeature);
+	//metaLayer->CommitTransaction();
 
     // Save layer pointer.
     _classesSet.insert(newLayer);
@@ -812,6 +854,11 @@ GNMErr GNMGdalNetwork::DeleteFeature (OGRLayer *poLayer,long nFID)
  * The connections integrity fully supported: the features must exist; the
  * features must not already be edges if they are passed to the method as
  * vertexes; and so on.
+ *
+ * Note, that this method will read layers and its features if the according 
+ * rules are set via GetFeature(), so for several drivers (e.g. PostgreSQL) 
+ * it's not correct to call it while the sequential read via GetNextFeature()  
+ * is performed.
  *
  * @param nSrcGFID The GFID of feature which will serve as the source vertex
  * in this connection. The feature actually can have any geometry type.
@@ -1951,3 +1998,9 @@ GNMErr GNMGdalCreateRule (GNMGdalNetworkH hNet, const char *pszRuleStr)
 }
 
 
+//GNMErr CPL_DLL GNMGdalAutoConnect (GNMGdalNetworkH hNet, OGRLayerH *hLayers, double dTolerance)
+//{
+//	VALIDATE_POINTER1( hNet, "GNMGdalAutoConnect", GNMERR_FAILURE );
+//
+//	return ((GNMGdalNetwork*)hNet)->AutoConnect((OGRLayer**)hLayers, dTolerance, NULL);
+//}

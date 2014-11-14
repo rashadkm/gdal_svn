@@ -41,7 +41,7 @@
 // issues which can cause an incorrect work of network.
 static const char *GNMGdalSupportedDrivers[] = {
     "ESRI Shapefile",
-    // ...
+    "PostGIS", "PostgreSQL",
     NULL };
 
 // General constants.
@@ -314,7 +314,10 @@ class CPL_DLL GNMNetwork: public GDALMajorObject
                                       double dNewCost,
                                       double dNewInvCost);
 
-    virtual GNMErr AutoConnect (OGRLayer **papoLayers,
+    //virtual GNMErr AutoConnect (OGRLayer **papoLayers,
+                                //double dTolerance,
+                                //char **papszParams);
+    virtual GNMErr AutoConnect (std::vector<OGRLayer*> vLayers,
                                 double dTolerance,
                                 char **papszParams);
 

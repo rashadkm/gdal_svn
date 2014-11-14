@@ -1054,8 +1054,17 @@ GNMGdalNetwork *GNMManager::GdalCreateNetwork (const char *pszName,
         return NULL;
     }
 
-    GDALDataset *poDS;
-    poDS = poDriver->Create(pszName, 0, 0, 0, GDT_Unknown, papszDatasetOptions);
+	GDALDataset *poDS;
+	// As PostGIS driver does not support creation of dataset, we try to open the existed database.
+	if (strcmp(pszFormat,"PostGIS") == 0 || strcmp(pszFormat,"PostgreSQL") == 0)
+	{
+		poDS = (GDALDataset*) GDALOpenEx(pszName, GDAL_OF_VECTOR | GDAL_OF_UPDATE,
+                                     NULL, NULL, NULL);
+	}
+	else
+	{
+		poDS = poDriver->Create(pszName, 0, 0, 0, GDT_Unknown, papszDatasetOptions);
+	}
     if(poDS == NULL)
     {
         //CPLErr

@@ -40,8 +40,8 @@ CPL_C_START
  
  
 typedef void *GNMNetworkH;
-
 typedef void *GNMGdalNetworkH;
+typedef void *GNMStdAnalyserH;
 
 
 /* ==================================================================== */
@@ -127,6 +127,10 @@ GNMErr CPL_DLL GNMGdalReconnectCostFeatures (GNMGdalNetworkH hNet,
                                       double dNewCost,
                                       double dNewInvCost);
 
+//GNMErr CPL_DLL GNMGdalAutoConnect (GNMGdalNetworkH hNet,
+//								   OGRLayerH *hLayers,
+//                                   double dTolerance);
+
 GNMErr CPL_DLL GNMGdalDisconnectAll (GNMGdalNetworkH hNet);
 
 bool CPL_DLL GNMGdalIsDriverSupported (GDALDatasetH hDS);
@@ -142,6 +146,16 @@ const char CPL_DLL *GNMGdalGetMetaParamValueName (GNMGdalNetworkH hNet);
 const char CPL_DLL *GNMGdalGetMetaParamValueDescr (GNMGdalNetworkH hNet);
 
 GNMErr CPL_DLL GNMGdalCreateRule (GNMGdalNetworkH hNet, const char *pszRuleStr);
+
+
+/* ==================================================================== */
+/*                          GNMStdAnalyser                              */
+/* ==================================================================== */
+
+
+GNMStdAnalyserH CPL_DLL GNMCreateStdAnalyser ();
+
+void CPL_DLL GNMDeleteStdAnalyser (GNMStdAnalyserH hAnalyser);
 
 
 CPL_C_END

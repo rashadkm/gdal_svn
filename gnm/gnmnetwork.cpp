@@ -178,29 +178,37 @@ GNMErr GNMNetwork::ReconnectFeatures (GNMGFID nSrcGFID,GNMGFID nTgtGFID,
  *
  * @since GDAL 2.0
  */
-GNMErr GNMNetwork::AutoConnect (OGRLayer **papoLayers,
+//GNMErr GNMNetwork::AutoConnect (OGRLayer **papoLayers,
+                            //double dTolerance,
+                            //char **papszParams)
+GNMErr GNMNetwork::AutoConnect (std::vector<OGRLayer*> vLayers,
                             double dTolerance,
                             char **papszParams)
 {
-    if (papoLayers == NULL)
+    //if (papoLayers == NULL)
+	if (vLayers.size() == 0)
         return GNMERR_FAILURE;
 
     std::vector<OGRLayer*> lineLayers;
     std::vector<OGRLayer*> pointLayers;
-    int i = 0;
-    while (papoLayers[i] != NULL)
+    //int i = 0;
+	std::vector<OGRLayer*>::iterator itL;
+    //while (papoLayers[i] != NULL)
+	for (itL = vLayers.begin(); itL != vLayers.end(); ++itL)
     {
-        if (papoLayers[i] != NULL &&
-                papoLayers[i]->GetGeomType() == wkbLineString)
+        //if (papoLayers[i] != NULL && papoLayers[i]->GetGeomType() == wkbLineString)
+		if ((*itL)->GetGeomType() == wkbLineString)
         {
-            lineLayers.push_back(papoLayers[i]);
+            //lineLayers.push_back(papoLayers[i]);
+			lineLayers.push_back((*itL));
         }
-        else if (papoLayers[i] != NULL &&
-                 papoLayers[i]->GetGeomType() == wkbPoint)
+        //else if (papoLayers[i] != NULL && papoLayers[i]->GetGeomType() == wkbPoint)
+		else if ((*itL)->GetGeomType() == wkbPoint)
         {
-            pointLayers.push_back(papoLayers[i]);
+            //pointLayers.push_back(papoLayers[i]);
+			pointLayers.push_back((*itL));
         }
-        i++;
+        //i++;
     }
     if (lineLayers.size() == 0 || pointLayers.size() == 0)
     {
@@ -211,25 +219,29 @@ GNMErr GNMNetwork::AutoConnect (OGRLayer **papoLayers,
     OGRPoint startP;
     OGRPoint endP;
 
-    // Iterating line layers.
+	// Load all line features into array. We can not read features and connect them
+	// at the same time, because ConnectFeatures() can interrupt this sequential reading 
+	// with its own features reading.
+	std::vector<OGRFeature*> lineFeatures;
     std::vector<int>::size_type szl = lineLayers.size();
     for (unsigned i = 0; i < szl; i++)
-    {
-        OGRLayer *lineLayer = lineLayers[i];
-
-        // For each line feature in this layer.
+	{
+		OGRLayer *lineLayer = lineLayers[i];
         lineLayer->ResetReading();
         OGRFeature *lineFeature;
         while((lineFeature = lineLayer->GetNextFeature()) != NULL)
-        {
-            GNMGFID lineGFID = lineFeature->GetFieldAsInteger(GNM_SYSFIELD_GFID);
+		{
+			lineFeatures.push_back(lineFeature);
+		}
+	}
 
-            if (lineGFID == 684)
-            {
-                int x = 9;
-            }
+	// Iterate lines.
+	std::vector<OGRFeature*>::iterator itLF;
+	for (itLF = lineFeatures.begin(); itLF != lineFeatures.end(); ++itLF)
+	{
+            GNMGFID lineGFID = (*itLF)->GetFieldAsInteger(GNM_SYSFIELD_GFID);
 
-            OGRGeometry* lineGeom = lineFeature->GetGeometryRef();
+            OGRGeometry* lineGeom = (*itLF)->GetGeometryRef();
             static_cast<OGRLineString*>(lineGeom)->StartPoint(&startP);
             static_cast<OGRLineString*>(lineGeom)->EndPoint(&endP);
 
@@ -294,7 +306,7 @@ GNMErr GNMNetwork::AutoConnect (OGRLayer **papoLayers,
             if ((pointStartGFID != -1) && (pointEndGFID != -1))
             {
                 // The costs and direction will be replaced in concrete
-                // ConnectFeatures() if needed.
+                // ConnectFeatures() if the rules are set.
                 GNMErr err = ConnectFeatures(pointStartGFID,pointEndGFID,lineGFID,
                                 0.0, 0.0, GNM_DIR_DOUBLE);
                 if (err != GNMERR_NONE)
@@ -303,8 +315,8 @@ GNMErr GNMNetwork::AutoConnect (OGRLayer **papoLayers,
                 }
             }
 
-            OGRFeature::DestroyFeature(lineFeature);
-        }
+			// Free feature resourses.
+            OGRFeature::DestroyFeature(*itLF);
     }
 
     return GNMERR_NONE;

@@ -85,9 +85,6 @@ class CPL_DLL GNMStdAnalyser
     std::map<GNMGFID,GNMStdVertex> verts;
     std::map<GNMGFID,GNMStdEdge> edges;
 
-    GNMStdAnalyser ();
-    ~GNMStdAnalyser ();
-
     void _addVertex(GNMGFID gfid);
     //GNMErr _addEdge (GNMGFID conGfid,GNMGFID srcGfid,GNMGFID tgtGfid,GNMDirection dir);
     GNMErr _addEdge (GNMGFID conGfid,GNMGFID srcGfid,GNMGFID tgtGfid,bool isBidir);
@@ -100,6 +97,9 @@ class CPL_DLL GNMStdAnalyser
     bool _isVertBlocked (GNMGFID vertGfid);
 
     public:
+
+	GNMStdAnalyser ();
+    ~GNMStdAnalyser ();
 
     // TODO: add to the parameters of PrepareGraph() the following:
     //, unsigned int nGraphFlags, char **papszOptions);
