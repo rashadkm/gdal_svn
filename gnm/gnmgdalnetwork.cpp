@@ -510,7 +510,7 @@ GNMErr GNMGdalNetwork::CopyLayer (OGRLayer *poSrcLayer, const char *pszNewName)
 		OGRFeature *featFeature = OGRFeature::CreateFeature(featLayer->GetLayerDefn());
 		featFeature->SetField(GNM_SYSFIELD_GFID,(*itNF)->GetFieldAsInteger(GNM_SYSFIELD_GFID));
         featFeature->SetField(GNM_SYSFIELD_LAYERNAME,newLayerName);
-		featFeature->SetField(GNM_SYSFIELD_FID,(*itNF)->GetFID());
+		featFeature->SetField(GNM_SYSFIELD_FID,(int)(*itNF)->GetFID());
         if (featLayer->CreateFeature(featFeature) != OGRERR_NONE)
         {
             //CPLErr
