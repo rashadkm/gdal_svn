@@ -51,17 +51,18 @@ CPL_CVSID("$Id$");
 
 OGRShapeLayer::OGRShapeLayer( OGRShapeDataSource* poDSIn,
                               const char * pszFullNameIn,
-                              SHPHandle hSHPIn, DBFHandle hDBFIn, 
+                              SHPHandle hSHPIn, DBFHandle hDBFIn,
                               OGRSpatialReference *poSRSIn, int bSRSSetIn,
                               int bUpdate,
-                              OGRwkbGeometryType eReqType ) :
+                              OGRwkbGeometryType eReqType,
+                              char ** papszCreateOptions ) :
                                 OGRAbstractProxiedLayer(poDSIn->GetPool())
 
 {
     poDS = poDSIn;
 
     pszFullName = CPLStrdup(pszFullNameIn);
-    
+
     hSHP = hSHPIn;
     hDBF = hDBFIn;
     bUpdateAccess = bUpdate;
@@ -93,9 +94,9 @@ OGRShapeLayer::OGRShapeLayer( OGRShapeDataSource* poDSIn,
                      hSHP->nRecords, hDBF->nRecords);
         }
     }
-    else 
+    else
         nTotalShapeCount = hDBF->nRecords;
-    
+
     eRequestedGeomType = eReqType;
 
     bTruncationWarningEmitted = FALSE;
@@ -109,18 +110,20 @@ OGRShapeLayer::OGRShapeLayer( OGRShapeDataSource* poDSIn,
 
     if( hDBF != NULL && hDBF->pszCodePage != NULL )
     {
-        CPLDebug( "Shape", "DBF Codepage = %s for %s", 
+        CPLDebug( "Shape", "DBF Codepage = %s for %s",
                   hDBF->pszCodePage, pszFullName );
 
         // Not too sure about this, but it seems like better than nothing.
         osEncoding = ConvertCodePage( hDBF->pszCodePage );
     }
-    
+
     const char* pszShapeEncoding = NULL;
     pszShapeEncoding = CSLFetchNameValue(poDS->GetOpenOptions(), "ENCODING");
     if( pszShapeEncoding == NULL )
+        pszShapeEncoding = CSLFetchNameValue( papszCreateOptions, "ENCODING" );
+    if( pszShapeEncoding == NULL )
         pszShapeEncoding = CPLGetConfigOption( "SHAPE_ENCODING", NULL );
-    if( pszShapeEncoding != NULL )
+    if( pszShapeEncoding != NULL)
         osEncoding = pszShapeEncoding;
 
     if( osEncoding != "" )
@@ -166,7 +169,7 @@ OGRShapeLayer::~OGRShapeLayer()
     if( m_nFeaturesRead > 0 && poFeatureDefn != NULL )
     {
         CPLDebug( "Shape", "%d features read on layer '%s'.",
-                  (int) m_nFeaturesRead, 
+                  (int) m_nFeaturesRead,
                   poFeatureDefn->GetName() );
     }
 
@@ -205,7 +208,7 @@ CPLString OGRShapeLayer::ConvertCodePage( const char *pszCodePage )
 
     if( EQUALN(pszCodePage,"LDID/",5) )
     {
-        int nCP = -1; // windows code page. 
+        int nCP = -1; // windows code page.
 
         //http://www.autopark.ru/ASBProgrammerGuide/DBFSTRUC.HTM
         switch( atoi(pszCodePage+5) )
@@ -285,7 +288,7 @@ CPLString OGRShapeLayer::ConvertCodePage( const char *pszCodePage )
 
     // From the CPG file
     // http://resources.arcgis.com/fr/content/kbase?fa=articleShow&d=21106
-    
+
     if( (atoi(pszCodePage) >= 437 && atoi(pszCodePage) <= 950)
         || (atoi(pszCodePage) >= 1250 && atoi(pszCodePage) <= 1258) )
     {
@@ -321,7 +324,7 @@ int OGRShapeLayer::CheckForQIX()
 
     pszQIXFilename = CPLResetExtension( pszFullName, "qix" );
 
-    hQIX = SHPOpenDiskTree( pszQIXFilename, NULL ); 
+    hQIX = SHPOpenDiskTree( pszQIXFilename, NULL );
 
     bCheckedForQIX = TRUE;
 
@@ -442,7 +445,7 @@ int OGRShapeLayer::ScanIndices()
                                                 adfBoundsMin, adfBoundsMax,
                                                 &nSpatialFIDCount );
 
-        CPLDebug( "SHAPE", "Used spatial index, got %d matches.", 
+        CPLDebug( "SHAPE", "Used spatial index, got %d matches.",
                   nSpatialFIDCount );
 
         delete m_poFilterGeomLastValid;
@@ -607,8 +610,8 @@ OGRErr OGRShapeLayer::SetNextByIndex( long nIndex )
     if( nIndex < 0 )
         return OGRERR_FAILURE;
 
-    // Eventually we should try to use panMatchingFIDs list 
-    // if available and appropriate. 
+    // Eventually we should try to use panMatchingFIDs list
+    // if available and appropriate.
     if( m_poFilterGeom != NULL || m_poAttrQuery != NULL )
         return OGRLayer::SetNextByIndex( nIndex );
 
@@ -629,10 +632,10 @@ OGRFeature *OGRShapeLayer::FetchShape(int iShapeId /*, OGREnvelope* psShapeExten
 {
     OGRFeature *poFeature;
 
-    if (m_poFilterGeom != NULL && hSHP != NULL ) 
+    if (m_poFilterGeom != NULL && hSHP != NULL )
     {
         SHPObject   *psShape;
-        
+
         psShape = SHPReadObject( hSHP, iShapeId );
 
         // do not trust degenerate bounds on non-point geometries
@@ -648,15 +651,15 @@ OGRFeature *OGRShapeLayer::FetchShape(int iShapeId /*, OGREnvelope* psShapeExten
             poFeature = SHPReadOGRFeature( hSHP, hDBF, poFeatureDefn,
                                            iShapeId, psShape, osEncoding );
         }
-        else if( m_sFilterEnvelope.MaxX < psShape->dfXMin 
+        else if( m_sFilterEnvelope.MaxX < psShape->dfXMin
                  || m_sFilterEnvelope.MaxY < psShape->dfYMin
                  || psShape->dfXMax  < m_sFilterEnvelope.MinX
-                 || psShape->dfYMax < m_sFilterEnvelope.MinY ) 
+                 || psShape->dfYMax < m_sFilterEnvelope.MinY )
         {
             SHPDestroyObject(psShape);
             poFeature = NULL;
-        } 
-        else 
+        }
+        else
         {
             /*psShapeExtent->MinX = psShape->dfXMin;
             psShapeExtent->MinY = psShape->dfYMin;
@@ -664,14 +667,14 @@ OGRFeature *OGRShapeLayer::FetchShape(int iShapeId /*, OGREnvelope* psShapeExten
             psShapeExtent->MaxY = psShape->dfYMax;*/
             poFeature = SHPReadOGRFeature( hSHP, hDBF, poFeatureDefn,
                                            iShapeId, psShape, osEncoding );
-        }                
-    } 
-    else 
+        }
+    }
+    else
     {
         poFeature = SHPReadOGRFeature( hSHP, hDBF, poFeatureDefn,
                                        iShapeId, NULL, osEncoding );
-    }    
-    
+    }
+
     return poFeature;
 }
 
@@ -697,7 +700,7 @@ OGRFeature *OGRShapeLayer::GetNextFeature()
     {
         ScanIndices();
     }
-    
+
 /* -------------------------------------------------------------------- */
 /*      Loop till we find a feature matching our criteria.              */
 /* -------------------------------------------------------------------- */
@@ -711,11 +714,11 @@ OGRFeature *OGRShapeLayer::GetNextFeature()
             {
                 return NULL;
             }
-            
+
             // Check the shape object's geometry, and if it matches
-            // any spatial filter, return it.  
+            // any spatial filter, return it.
             poFeature = FetchShape(panMatchingFIDs[iMatchingFID] /*, &oShapeExtent*/);
-            
+
             iMatchingFID++;
 
         }
@@ -740,7 +743,7 @@ OGRFeature *OGRShapeLayer::GetNextFeature()
 
             iNextShapeId++;
         }
-        
+
         if( poFeature != NULL )
         {
             OGRGeometry* poGeom = poFeature->GetGeometryRef();
@@ -784,7 +787,7 @@ OGRFeature *OGRShapeLayer::GetFeature( long nFeatureId )
         }
 
         m_nFeaturesRead++;
-    
+
         return poFeature;
     }
 
@@ -849,11 +852,11 @@ OGRErr OGRShapeLayer::DeleteFeature( long nFID )
         return OGRERR_FAILURE;
     }
 
-    if( nFID < 0 
+    if( nFID < 0
         || (hSHP != NULL && nFID >= hSHP->nRecords)
         || (hDBF != NULL && nFID >= hDBF->nRecords) )
     {
-        CPLError( CE_Failure, CPLE_AppDefined, 
+        CPLError( CE_Failure, CPLE_AppDefined,
                   "Attempt to delete shape with feature id (%ld) which does "
                   "not exist.", nFID );
         return OGRERR_FAILURE;
@@ -861,7 +864,7 @@ OGRErr OGRShapeLayer::DeleteFeature( long nFID )
 
     if( !hDBF )
     {
-        CPLError( CE_Failure, CPLE_AppDefined, 
+        CPLError( CE_Failure, CPLE_AppDefined,
                   "Attempt to delete shape in shapefile with no .dbf file.\n"
                   "Deletion is done by marking record deleted in dbf\n"
                   "and is not supported without a .dbf file." );
@@ -870,7 +873,7 @@ OGRErr OGRShapeLayer::DeleteFeature( long nFID )
 
     if( DBFIsRecordDeleted( hDBF, nFID ) )
     {
-        CPLError( CE_Failure, CPLE_AppDefined, 
+        CPLError( CE_Failure, CPLE_AppDefined,
                   "Attempt to delete shape with feature id (%ld), but it is marked deleted already.",
                   nFID );
         return OGRERR_FAILURE;
@@ -918,13 +921,13 @@ OGRErr OGRShapeLayer::CreateFeature( OGRFeature *poFeature )
 
     poFeature->SetFID( OGRNullFID );
 
-    if( nTotalShapeCount == 0 
-        && eRequestedGeomType == wkbUnknown 
+    if( nTotalShapeCount == 0
+        && eRequestedGeomType == wkbUnknown
         && poFeature->GetGeometryRef() != NULL )
     {
         OGRGeometry     *poGeom = poFeature->GetGeometryRef();
         int             nShapeType;
-        
+
         switch( poGeom->getGeometryType() )
         {
           case wkbPoint:
@@ -981,15 +984,15 @@ OGRErr OGRShapeLayer::CreateFeature( OGRFeature *poFeature )
             ResetGeomType( nShapeType );
         }
     }
-    
-    eErr = SHPWriteOGRFeature( hSHP, hDBF, poFeatureDefn, poFeature, 
+
+    eErr = SHPWriteOGRFeature( hSHP, hDBF, poFeatureDefn, poFeature,
                                osEncoding, &bTruncationWarningEmitted );
 
     if( hSHP != NULL )
         nTotalShapeCount = hSHP->nRecords;
-    else 
+    else
         nTotalShapeCount = hDBF->nRecords;
-    
+
     return eErr;
 }
 
@@ -1306,7 +1309,7 @@ int OGRShapeLayer::TestCapability( const char * pszCap )
     if( EQUAL(pszCap,OLCRandomRead) )
         return TRUE;
 
-    else if( EQUAL(pszCap,OLCSequentialWrite) 
+    else if( EQUAL(pszCap,OLCSequentialWrite)
              || EQUAL(pszCap,OLCRandomWrite) )
         return bUpdateAccess;
 
@@ -1386,7 +1389,7 @@ int OGRShapeLayer::TestCapability( const char * pszCap )
 
         return TRUE;
     }
-    else 
+    else
         return FALSE;
 }
 
@@ -1401,7 +1404,7 @@ OGRErr OGRShapeLayer::CreateField( OGRFieldDefn *poFieldDefn, int bApproxOK )
         return OGRERR_FAILURE;
 
     CPLAssert( NULL != poFieldDefn );
-    
+
     int         iNewField;
 
     if( !bUpdateAccess )
@@ -1447,7 +1450,7 @@ OGRErr OGRShapeLayer::CreateField( OGRFieldDefn *poFieldDefn, int bApproxOK )
 /* -------------------------------------------------------------------- */
 /*      Normalize field name                                            */
 /* -------------------------------------------------------------------- */
-        
+
     char szNewFieldName[10 + 1];
     char * pszTmp = NULL;
     int nRenameNum = 1;
@@ -1486,7 +1489,7 @@ OGRErr OGRShapeLayer::CreateField( OGRFieldDefn *poFieldDefn, int bApproxOK )
         CPLError( CE_Failure, CPLE_NotSupported,
                   "Failed to add field named '%s'",
                   poFieldDefn->GetNameRef() );
-                  
+
         CPLFree( pszTmp );
         return OGRERR_FAILURE;
     }
@@ -1498,7 +1501,7 @@ OGRErr OGRShapeLayer::CreateField( OGRFieldDefn *poFieldDefn, int bApproxOK )
 
     CPLFree( pszTmp );
     pszTmp = NULL;
-    
+
     if( DBFGetFieldIndex( hDBF, szNewFieldName ) >= 0 )
     {
         CPLError( CE_Failure, CPLE_NotSupported,
@@ -1512,7 +1515,7 @@ OGRErr OGRShapeLayer::CreateField( OGRFieldDefn *poFieldDefn, int bApproxOK )
     if( !EQUAL(osFieldName,szNewFieldName) )
     {
         CPLError( CE_Warning, CPLE_NotSupported,
-                  "Normalized/laundered field name: '%s' to '%s'", 
+                  "Normalized/laundered field name: '%s' to '%s'",
                   poFieldDefn->GetNameRef(),
                   szNewFieldName );
 
@@ -1613,7 +1616,7 @@ OGRErr OGRShapeLayer::CreateField( OGRFieldDefn *poFieldDefn, int bApproxOK )
 
         return OGRERR_NONE;
     }
-    else        
+    else
     {
         CPLError( CE_Failure, CPLE_AppDefined,
                   "Can't create field %s in Shape DBF file, reason unknown.",
@@ -1855,7 +1858,7 @@ int OGRShapeLayer::ResetGeomType( int nNewGeomType )
 
     if( hSHP->fpSHX == NULL)
     {
-        CPLError( CE_Failure, CPLE_NotSupported, 
+        CPLError( CE_Failure, CPLE_NotSupported,
                   " OGRShapeLayer::ResetGeomType failed : SHX file is closed");
         return FALSE;
     }
@@ -1882,7 +1885,7 @@ int OGRShapeLayer::ResetGeomType( int nNewGeomType )
 /*      Update .shx header.                                             */
 /* -------------------------------------------------------------------- */
     nStartPos = (int)( hSHP->sHooks.FTell( hSHP->fpSHX ) );
-    
+
     if( hSHP->sHooks.FSeek( hSHP->fpSHX, 0, SEEK_SET ) != 0
         || hSHP->sHooks.FRead( abyHeader, 100, 1, hSHP->fpSHX ) != 1 )
         return FALSE;
@@ -1950,7 +1953,7 @@ OGRErr OGRShapeLayer::DropSpatialIndex()
 
     if( !CheckForQIX() && !CheckForSBN() )
     {
-        CPLError( CE_Warning, CPLE_AppDefined, 
+        CPLError( CE_Warning, CPLE_AppDefined,
                   "Layer %s has no spatial index, DROP SPATIAL INDEX failed.",
                   poFeatureDefn->GetName() );
         return OGRERR_FAILURE;
@@ -1995,7 +1998,7 @@ OGRErr OGRShapeLayer::DropSpatialIndex()
             if( VSIUnlink( pszIndexFilename ) != 0 )
             {
                 CPLDebug( "SHAPE",
-                          "Failed to delete file %s.\n%s", 
+                          "Failed to delete file %s.\n%s",
                           pszIndexFilename, VSIStrerror( errno ) );
             }
         }
@@ -2091,14 +2094,14 @@ OGRErr OGRShapeLayer::Repack()
                   "Repack");
         return OGRERR_FAILURE;
     }
-    
+
     if( hDBF == NULL )
     {
-        CPLError( CE_Failure, CPLE_NotSupported, 
+        CPLError( CE_Failure, CPLE_NotSupported,
                   "Attempt to repack a shapefile with no .dbf file not supported.");
         return OGRERR_FAILURE;
     }
-    
+
 /* -------------------------------------------------------------------- */
 /*      Build a list of records to be dropped.                          */
 /* -------------------------------------------------------------------- */
@@ -2158,7 +2161,7 @@ OGRErr OGRShapeLayer::Repack()
 /* -------------------------------------------------------------------- */
     CPLString osDirname(CPLGetPath(pszFullName));
     CPLString osBasename(CPLGetBasename(pszFullName));
-    
+
     CPLString osDBFName, osSHPName, osSHXName, osCPGName;
     char **papszCandidates = CPLReadDir( osDirname );
     int i = 0;
@@ -2183,12 +2186,12 @@ OGRErr OGRShapeLayer::Repack()
             else if (EQUAL(osCandidateExtension, "cpg"))
                 osCPGName = CPLFormFilename(osDirname, papszCandidates[i], NULL);
         }
-        
+
         i++;
     }
     CSLDestroy(papszCandidates);
     papszCandidates = NULL;
-    
+
     if (osDBFName.size() == 0)
     {
         CPLError(CE_Failure, CPLE_AppDefined,
@@ -2227,7 +2230,7 @@ OGRErr OGRShapeLayer::Repack()
 /*      Create a new dbf file, matching the old.                        */
 /* -------------------------------------------------------------------- */
     DBFHandle hNewDBF = NULL;
-    
+
     CPLString oTempFile(CPLFormFilename(osDirname, osBasename, NULL));
     oTempFile += "_packed.dbf";
 
@@ -2236,8 +2239,8 @@ OGRErr OGRShapeLayer::Repack()
     {
         CPLFree( panRecordsToDelete );
 
-        CPLError( CE_Failure, CPLE_OpenFailed, 
-                  "Failed to create temp file %s.", 
+        CPLError( CE_Failure, CPLE_OpenFailed,
+                  "Failed to create temp file %s.",
                   oTempFile.c_str() );
         return OGRERR_FAILURE;
     }
@@ -2260,8 +2263,8 @@ OGRErr OGRShapeLayer::Repack()
     int iDestShape = 0;
     int iNextDeletedShape = 0;
 
-    for( iShape = 0; 
-         iShape < nTotalShapeCount && eErr == OGRERR_NONE; 
+    for( iShape = 0;
+         iShape < nTotalShapeCount && eErr == OGRERR_NONE;
          iShape++ )
     {
         if( panRecordsToDelete[iNextDeletedShape] == iShape )
@@ -2273,7 +2276,7 @@ OGRErr OGRShapeLayer::Repack()
                 eErr = OGRERR_FAILURE;
             else if( !DBFWriteTuple( hNewDBF, iDestShape++, pTuple ) )
                 eErr = OGRERR_FAILURE;
-        }                           
+        }
     }
 
     if( eErr != OGRERR_NONE )
@@ -2302,7 +2305,7 @@ OGRErr OGRShapeLayer::Repack()
 
         return OGRERR_FAILURE;
     }
-        
+
     if( VSIRename( oTempFile, osDBFName ) != 0 )
     {
         CPLDebug( "Shape", "Can not rename DBF file: %s", VSIStrerror( errno ) );
@@ -2334,8 +2337,8 @@ OGRErr OGRShapeLayer::Repack()
 /* -------------------------------------------------------------------- */
         iNextDeletedShape = 0;
 
-        for( iShape = 0; 
-             iShape < nTotalShapeCount && eErr == OGRERR_NONE; 
+        for( iShape = 0;
+             iShape < nTotalShapeCount && eErr == OGRERR_NONE;
              iShape++ )
         {
             if( panRecordsToDelete[iNextDeletedShape] == iShape )
@@ -2381,7 +2384,7 @@ OGRErr OGRShapeLayer::Repack()
             CPLFree( panRecordsToDelete );
             return OGRERR_FAILURE;
         }
-    
+
         oTempFile = CPLResetExtension( oTempFile, "shx" );
         if( VSIRename( oTempFile, osSHXName ) != 0 )
         {
@@ -2390,27 +2393,27 @@ OGRErr OGRShapeLayer::Repack()
             return OGRERR_FAILURE;
         }
     }
-    
+
     CPLFree( panRecordsToDelete );
     panRecordsToDelete = NULL;
 
 /* -------------------------------------------------------------------- */
 /*      Reopen the shapefile                                            */
 /*                                                                      */
-/* We do not need to reimplement OGRShapeDataSource::OpenFile() here    */  
+/* We do not need to reimplement OGRShapeDataSource::OpenFile() here    */
 /* with the fully featured error checking.                              */
 /* If all operations above succeeded, then all necessery files are      */
 /* in the right place and accessible.                                   */
 /* -------------------------------------------------------------------- */
     CPLAssert( NULL == hSHP );
     CPLAssert( NULL == hDBF && NULL == hNewDBF );
-    
+
     const char* pszAccess = NULL;
     if( bUpdateAccess )
         pszAccess = "r+";
     else
         pszAccess = "r";
-    
+
     if( bMustReopenSHP )
         hSHP = poDS->DS_SHPOpen ( osSHPName , pszAccess );
     hDBF = poDS->DS_DBFOpen ( osDBFName , pszAccess );
@@ -2592,21 +2595,21 @@ OGRErr OGRShapeLayer::RecomputeExtent()
                   "RecomputeExtent");
         return OGRERR_FAILURE;
     }
-    
+
     if( hSHP == NULL )
     {
-        CPLError( CE_Failure, CPLE_AppDefined, 
+        CPLError( CE_Failure, CPLE_AppDefined,
                   "The RECOMPUTE EXTENT operation is not permitted on a layer without .SHP file." );
         return OGRERR_FAILURE;
     }
-    
+
     double adBoundsMin[4] = { 0.0, 0.0, 0.0, 0.0 };
     double adBoundsMax[4] = { 0.0, 0.0, 0.0, 0.0 };
 
     int bHasBeenInit = FALSE;
 
-    for( int iShape = 0; 
-         iShape < nTotalShapeCount; 
+    for( int iShape = 0;
+         iShape < nTotalShapeCount;
          iShape++ )
     {
         if( hDBF == NULL || !DBFIsRecordDeleted( hDBF, iShape ) )
@@ -2657,7 +2660,7 @@ OGRErr OGRShapeLayer::RecomputeExtent()
         memcpy(hSHP->adBoundsMin, adBoundsMin, 4*sizeof(double));
         memcpy(hSHP->adBoundsMax, adBoundsMax, 4*sizeof(double));
     }
-    
+
     return OGRERR_NONE;
 }
 
@@ -2740,7 +2743,7 @@ void OGRShapeLayer::CloseUnderlyingLayer()
     /* We close QIX and reset the check flag, so that CheckForQIX() */
     /* will retry opening it if necessary when the layer is active again */
     if( hQIX != NULL )
-        SHPCloseDiskTree( hQIX ); 
+        SHPCloseDiskTree( hQIX );
     hQIX = NULL;
     bCheckedForQIX = FALSE;
 

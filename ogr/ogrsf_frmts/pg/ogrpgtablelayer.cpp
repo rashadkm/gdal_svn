@@ -108,7 +108,7 @@ void OGRPGTableFeatureDefn::SolveFields()
 /*                            GetFIDColumn()                            */
 /************************************************************************/
 
-const char *OGRPGTableLayer::GetFIDColumn() 
+const char *OGRPGTableLayer::GetFIDColumn()
 
 {
     ReadTableDefinition();
@@ -201,7 +201,7 @@ OGRPGTableLayer::OGRPGTableLayer( OGRPGDataSource *poDSIn,
     poFeatureDefn = new OGRPGTableFeatureDefn( this, osDefnName );
     SetDescription( poFeatureDefn->GetName() );
     poFeatureDefn->Reference();
-    
+
     bAutoFIDOnCreateViaCopy = FALSE;
 }
 
@@ -297,7 +297,7 @@ int OGRPGTableLayer::ReadTableDefinition()
               "OR i.indkey[6]=a.attnum OR i.indkey[7]=a.attnum OR i.indkey[8]=a.attnum "
               "OR i.indkey[9]=a.attnum) %s ORDER BY a.attnum",
               pszTypnameEqualsAnyClause, pszEscapedTableNameSingleQuote, osSchemaClause.c_str() );
-     
+
     hResult = OGRPG_PQexec(hPGConn, osCommand.c_str() );
 
     if ( hResult && PGRES_TUPLES_OK == PQresultStatus(hResult) )
@@ -549,7 +549,7 @@ int OGRPGTableLayer::ReadTableDefinition()
 
         else
         {
-            CPLDebug( "PG", "Field %s is of unknown format type %s (type=%s).", 
+            CPLDebug( "PG", "Field %s is of unknown format type %s (type=%s).",
                       oField.GetNameRef(), pszFormatType, pszType );
         }
 
@@ -1405,12 +1405,12 @@ OGRErr OGRPGTableLayer::SetFeature( OGRFeature *poFeature )
                     OGRFree( pszHexEWKB );
                 }
                 else
-                    osCommand += "NULL";    
+                    osCommand += "NULL";
             }
             else
             {
                 char    *pszWKT = NULL;
-        
+
                 if (poGeom != NULL)
                     poGeom->exportToWkt( &pszWKT );
 
@@ -1426,7 +1426,7 @@ OGRErr OGRPGTableLayer::SetFeature( OGRFeature *poFeature )
                             CPLString().Printf(
                                 "GeomFromEWKT('SRID=%d;%s'::TEXT) ", nSRSId, pszWKT );
                     else
-                        osCommand += 
+                        osCommand +=
                             CPLString().Printf(
                                 "GeometryFromText('%s'::TEXT,%d) ", pszWKT, nSRSId );
                     OGRFree( pszWKT );
@@ -1445,7 +1445,7 @@ OGRErr OGRPGTableLayer::SetFeature( OGRFeature *poFeature )
         else
             bNeedComma = TRUE;
 
-        osCommand = osCommand 
+        osCommand = osCommand
             + OGRPGEscapeColumnName(poFeatureDefn->GetFieldDefn(i)->GetNameRef()) + " = ";
 
         if( !poFeature->IsFieldSet( i ) )
@@ -1523,7 +1523,7 @@ OGRErr OGRPGTableLayer::CreateFeature( OGRFeature *poFeature )
         }
     }
 
-    // We avoid testing the config option too often. 
+    // We avoid testing the config option too often.
     if( bUseCopy == USE_COPY_UNSET )
         bUseCopy = CSLTestBoolean( CPLGetConfigOption( "PG_USE_COPY", "NO") );
 
@@ -1601,7 +1601,7 @@ CPLString OGRPGEscapeString(PGconn *hPGConn,
                   pszTableName, pszFieldName, pszStrValue, nMaxLength );
         nSrcLen = nSrcLen * nMaxLength / nSrcLenUTF;
 
-        
+
         while( nSrcLen > 0 && ((unsigned char *) pszStrValue)[nSrcLen-1] > 127 )
         {
             CPLDebug( "PG", "Backup to start of multi-byte character." );
@@ -1623,7 +1623,7 @@ CPLString OGRPGEscapeString(PGconn *hPGConn,
     if (nError == 0)
         osCommand += pszDestStr;
     else
-        CPLError(CE_Warning, CPLE_AppDefined, 
+        CPLError(CE_Warning, CPLE_AppDefined,
                  "PQescapeString(): %s\n"
                  "  input: '%s'\n"
                  "    got: '%s'\n",
@@ -1735,13 +1735,13 @@ OGRErr OGRPGTableLayer::CreateFeatureViaInsert( OGRFeature *poFeature )
             osCommand += ", ";
         osCommand += OGRPGEscapeColumnName(poGeomFieldDefn->GetNameRef()) + " ";
     }
-    
+
     /* Use case of ogr_pg_60 test */
     if( poFeature->GetFID() != OGRNullFID && pszFIDColumn != NULL )
     {
         if( bNeedComma )
             osCommand += ", ";
-        
+
         osCommand = osCommand + OGRPGEscapeColumnName(pszFIDColumn) + " ";
         bNeedComma = TRUE;
     }
@@ -1757,7 +1757,7 @@ OGRErr OGRPGTableLayer::CreateFeatureViaInsert( OGRFeature *poFeature )
         else
             osCommand += ", ";
 
-        osCommand = osCommand 
+        osCommand = osCommand
             + OGRPGEscapeColumnName(poFeatureDefn->GetFieldDefn(i)->GetNameRef());
     }
 
@@ -1800,7 +1800,7 @@ OGRErr OGRPGTableLayer::CreateFeatureViaInsert( OGRFeature *poFeature )
                 OGRFree( pszHexEWKB );
             }
             else
-            { 
+            {
                 char    *pszWKT = NULL;
                 poGeom->exportToWkt( &pszWKT );
 
@@ -1815,14 +1815,14 @@ OGRErr OGRPGTableLayer::CreateFeatureViaInsert( OGRFeature *poFeature )
                             CPLString().Printf(
                                 "GeomFromEWKT('SRID=%d;%s'::TEXT) ", nSRSId, pszWKT );
                     else
-                        osCommand += 
+                        osCommand +=
                             CPLString().Printf(
                                 "GeometryFromText('%s'::TEXT,%d) ", pszWKT, nSRSId );
                     OGRFree( pszWKT );
                 }
                 else
                     osCommand += "''";
-                
+
             }
         }
         else if( !bWkbAsOid )
@@ -1977,7 +1977,7 @@ OGRErr OGRPGTableLayer::CreateFeatureViaCopy( OGRFeature *poFeature )
             osCommand += "\\N";
         }
     }
-    
+
     /* Next process the field id column */
     int nFIDIndex = -1;
     if( bFIDColumnInCopyFields )
@@ -2133,14 +2133,14 @@ OGRErr OGRPGTableLayer::CreateFeatureViaCopy( OGRFeature *poFeature )
                 }
 
                 //count of utf chars
-                if ((pszStrValue[iChar] & 0xc0) != 0x80) 
+                if ((pszStrValue[iChar] & 0xc0) != 0x80)
                     iUTFChar++;
 
                 /* Escape embedded \, \t, \n, \r since they will cause COPY
                    to misinterpret a line of text and thus abort */
-                if( pszStrValue[iChar] == '\\' || 
-                    pszStrValue[iChar] == '\t' || 
-                    pszStrValue[iChar] == '\r' || 
+                if( pszStrValue[iChar] == '\\' ||
+                    pszStrValue[iChar] == '\t' ||
+                    pszStrValue[iChar] == '\r' ||
                     pszStrValue[iChar] == '\n'   )
                 {
                     osCommand += '\\';
@@ -2191,7 +2191,7 @@ OGRErr OGRPGTableLayer::CreateFeatureViaCopy( OGRFeature *poFeature )
     {
       CPLError( CE_Failure, CPLE_AppDefined, "Writing COPY data blocked.");
       result = OGRERR_FAILURE;
-    }  
+    }
 #endif /* end of defined(PG_PRE74) */
 
     return result;
@@ -2421,8 +2421,8 @@ OGRErr OGRPGTableLayer::CreateField( OGRFieldDefn *poFieldIn, int bApproxOK )
     if( PQresultStatus(hResult) != PGRES_COMMAND_OK )
     {
         CPLError( CE_Failure, CPLE_AppDefined,
-                  "%s\n%s", 
-                  osCommand.c_str(), 
+                  "%s\n%s",
+                  osCommand.c_str(),
                   PQerrorMessage(hPGConn) );
 
         OGRPGClearResult( hResult );
@@ -2459,7 +2459,7 @@ OGRErr OGRPGTableLayer::CreateGeomField( OGRGeomFieldDefn *poGeomFieldIn,
                  "Cannot create geometry field of type wkbNone");
         return OGRERR_FAILURE;
     }
-    
+
     CPLString               osCommand;
     OGRPGGeomFieldDefn *poGeomField =
         new OGRPGGeomFieldDefn( this, poGeomFieldIn->GetNameRef() );
@@ -2476,7 +2476,7 @@ OGRErr OGRPGTableLayer::CreateGeomField( OGRGeomFieldDefn *poGeomFieldIn,
         poGeomField->SetName( pszSafeName );
         CPLFree( pszSafeName );
     }
-    
+
     OGRSpatialReference* poSRS = poGeomField->GetSpatialRef();
     int nSRSId = poDS->GetUndefinedSRID();
     if( nForcedSRSId != UNDETERMINED_SRID )
@@ -2504,7 +2504,7 @@ OGRErr OGRPGTableLayer::CreateGeomField( OGRGeomFieldDefn *poGeomFieldIn,
 /*      Create the new field.                                           */
 /* -------------------------------------------------------------------- */
     poDS->FlushSoftTransaction();
-    
+
     const char *pszGeometryType = OGRToOGCGeomType(poGeomField->GetType());
     osCommand.Printf(
             "SELECT AddGeometryColumn(%s,%s,%s,%d,'%s',%d)",
@@ -2548,7 +2548,7 @@ OGRErr OGRPGTableLayer::CreateGeomField( OGRGeomFieldDefn *poGeomFieldIn,
 
             return OGRERR_FAILURE;
         }
-        
+
         OGRPGClearResult( hResult );
     }
 
@@ -2959,7 +2959,7 @@ OGRErr OGRPGTableLayer::StartCopy(int bSetFID)
 
 {
     /* Tell the datasource we are now planning to copy data */
-    poDS->StartCopy( this ); 
+    poDS->StartCopy( this );
 
     CPLString osFields = BuildCopyFields(bSetFID);
 
@@ -3123,13 +3123,13 @@ void OGRPGTableLayer::CheckGeomTypeCompatibility(int iGeomField,
                                      eFlatGeomType != wkbGeometryCollection;
     else
         bHasWarnedIncompatibleGeom = (eFlatGeomType != eFlatLayerGeomType);
-    
+
     if (bHasWarnedIncompatibleGeom)
     {
         CPLError(CE_Warning, CPLE_AppDefined,
                  "Geometry to be inserted is of type %s, whereas the layer geometry type is %s.\n"
                  "Insertion is likely to fail",
-                 OGRGeometryTypeToName(poGeom->getGeometryType()), 
+                 OGRGeometryTypeToName(poGeom->getGeometryType()),
                  OGRGeometryTypeToName(eExpectedGeomType));
     }
 }
@@ -3206,10 +3206,10 @@ OGRErr OGRPGTableLayer::GetExtent( int iGeomField, OGREnvelope *psExtent, int bF
         poFeatureDefn->myGetGeomFieldDefn(iGeomField);
 
     const char* pszExtentFct;
-    // if bForce is 0 and ePostgisType is not GEOM_TYPE_GEOGRAPHY we can use 
+    // if bForce is 0 and ePostgisType is not GEOM_TYPE_GEOGRAPHY we can use
     // the ST_EstimatedExtent function which is quicker
     // ST_EstimatedExtent was called ST_Estimated_Extent up to PostGIS 2.0.x
-    // ST_EstimatedExtent returns NULL in absence of statistics (an exception before 
+    // ST_EstimatedExtent returns NULL in absence of statistics (an exception before
     //   PostGIS 1.5.4)
     if ( bForce == 0 && TestCapability(OLCFastGetExtent) )
     {

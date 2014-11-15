@@ -48,7 +48,7 @@
 /*      Functions from Shape2ogr.cpp.                                   */
 /* ==================================================================== */
 OGRFeature *SHPReadOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
-                               OGRFeatureDefn * poDefn, int iShape, 
+                               OGRFeatureDefn * poDefn, int iShape,
                                SHPObject *psShape, const char *pszSHPEncoding );
 OGRGeometry *SHPReadOGRObject( SHPHandle hSHP, int iShape, SHPObject *psShape );
 OGRFeatureDefn *SHPReadOGRFeatureDefn( const char * pszName,
@@ -175,8 +175,9 @@ class OGRShapeLayer : public OGRAbstractProxiedLayer
                                        const char * pszName,
                                        SHPHandle hSHP, DBFHandle hDBF,
                                        OGRSpatialReference *poSRS, int bSRSSet,
-                                       int bUpdate, 
-                                       OGRwkbGeometryType eReqType );
+                                       int bUpdate,
+                                       OGRwkbGeometryType eReqType,
+                                       char ** papszCreateOptions = NULL);
                         ~OGRShapeLayer();
 
     void                ResetReading();
@@ -188,7 +189,7 @@ class OGRShapeLayer : public OGRAbstractProxiedLayer
     OGRErr              DeleteFeature( long nFID );
     OGRErr              CreateFeature( OGRFeature *poFeature );
     OGRErr              SyncToDisk();
-    
+
     OGRFeatureDefn *    GetLayerDefn() { return poFeatureDefn; }
 
     int                 GetFeatureCount( int );
@@ -203,7 +204,7 @@ class OGRShapeLayer : public OGRAbstractProxiedLayer
     virtual int         TestCapability( const char * );
     virtual void        SetSpatialFilter( OGRGeometry * );
     virtual OGRErr      SetAttributeFilter( const char * );
-    
+
     void                AddToFileList( CPLStringList& oFileList );
 };
 
@@ -215,7 +216,7 @@ class OGRShapeDataSource : public OGRDataSource
 {
     OGRShapeLayer     **papoLayers;
     int                 nLayers;
-    
+
     char                *pszName;
 
     int                 bDSUpdate;
@@ -227,9 +228,9 @@ class OGRShapeDataSource : public OGRDataSource
     void                AddLayer(OGRShapeLayer* poLayer);
 
     std::vector<CPLString> oVectorLayerName;
-    
+
     int                 b2GBLimit;
-    
+
     char              **papszOpenOptions;
 
   public:
@@ -248,7 +249,7 @@ class OGRShapeDataSource : public OGRDataSource
     virtual OGRLayer    *GetLayer( int );
     virtual OGRLayer    *GetLayerByName(const char *);
 
-    virtual OGRLayer    *ICreateLayer( const char *, 
+    virtual OGRLayer    *ICreateLayer( const char *,
                                       OGRSpatialReference * = NULL,
                                       OGRwkbGeometryType = wkbUnknown,
                                       char ** = NULL );
