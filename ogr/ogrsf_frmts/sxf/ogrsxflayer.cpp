@@ -881,7 +881,6 @@ OGRFeature *OGRSXFLayer::GetNextRawFeature(long nFID)
                 case SXF_RAT_ASCIIZ_DOS:
                 {
                     unsigned nLen = unsigned(stAttInfo.nScale) + 1;
-                    nLen *= CPLEncodingCharSize("CP866");
                     if( nLen > nSemanticsSize || nSemanticsSize - nLen < offset )
                     {
                         nSemanticsSize = 0;
