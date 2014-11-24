@@ -1,33 +1,33 @@
 /******************************************************************************
-* $Id$
-*
-* Project:  OpenGIS Simple Features Reference Implementation
-* Purpose:  Private definitions within the Shapefile driver to implement
-*           integration with OGR.
-* Author:   Frank Warmerdam, warmerdam@pobox.com
-*
-******************************************************************************
-* Copyright (c) 1999,  Les Technologies SoftMap Inc.
-* Copyright (c) 2008-2013, Even Rouault <even dot rouault at mines-paris dot org>
-*
-* Permission is hereby granted, free of charge, to any person obtaining a
-* copy of this software and associated documentation files (the "Software"),
-* to deal in the Software without restriction, including without limitation
-* the rights to use, copy, modify, merge, publish, distribute, sublicense,
-* and/or sell copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following conditions:
-*
-* The above copyright notice and this permission notice shall be included
-* in all copies or substantial portions of the Software.
-*
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-* OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-* THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-* DEALINGS IN THE SOFTWARE.
-****************************************************************************/
+ * $Id$
+ *
+ * Project:  OpenGIS Simple Features Reference Implementation
+ * Purpose:  Private definitions within the Shapefile driver to implement
+ *           integration with OGR.
+ * Author:   Frank Warmerdam, warmerdam@pobox.com
+ *
+ ******************************************************************************
+ * Copyright (c) 1999,  Les Technologies SoftMap Inc.
+ * Copyright (c) 2008-2013, Even Rouault <even dot rouault at mines-paris dot org>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ ****************************************************************************/
 
 #ifndef _OGRSHAPE_H_INCLUDED
 #define _OGRSHAPE_H_INCLUDED
@@ -47,43 +47,43 @@
 /* ==================================================================== */
 /*      Functions from Shape2ogr.cpp.                                   */
 /* ==================================================================== */
-OGRFeature *SHPReadOGRFeature(SHPHandle hSHP, DBFHandle hDBF,
-    OGRFeatureDefn * poDefn, int iShape,
-    SHPObject *psShape, const char *pszSHPEncoding);
-OGRGeometry *SHPReadOGRObject(SHPHandle hSHP, int iShape, SHPObject *psShape);
-OGRFeatureDefn *SHPReadOGRFeatureDefn(const char * pszName,
-    SHPHandle hSHP, DBFHandle hDBF,
-    const char *pszSHPEncoding);
-OGRErr SHPWriteOGRFeature(SHPHandle hSHP, DBFHandle hDBF,
-    OGRFeatureDefn *poFeatureDefn,
-    OGRFeature *poFeature, const char *pszSHPEncoding,
-    int* pbTruncationWarningEmitted);
+OGRFeature *SHPReadOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
+                               OGRFeatureDefn * poDefn, int iShape,
+                               SHPObject *psShape, const char *pszSHPEncoding );
+OGRGeometry *SHPReadOGRObject( SHPHandle hSHP, int iShape, SHPObject *psShape );
+OGRFeatureDefn *SHPReadOGRFeatureDefn( const char * pszName,
+                                       SHPHandle hSHP, DBFHandle hDBF,
+                                       const char *pszSHPEncoding );
+OGRErr SHPWriteOGRFeature( SHPHandle hSHP, DBFHandle hDBF,
+                           OGRFeatureDefn *poFeatureDefn,
+                           OGRFeature *poFeature, const char *pszSHPEncoding,
+                           int* pbTruncationWarningEmitted );
 
 /************************************************************************/
 /*                         OGRShapeGeomFieldDefn                        */
 /************************************************************************/
 
-class OGRShapeGeomFieldDefn : public OGRGeomFieldDefn
+class OGRShapeGeomFieldDefn: public OGRGeomFieldDefn
 {
     char* pszFullName;
     int   bSRSSet;
     CPLString osPrjFile;
 
-public:
-    OGRShapeGeomFieldDefn(const char* pszFullNameIn, OGRwkbGeometryType eType,
-        int bSRSSetIn, OGRSpatialReference *poSRSIn) :
-        OGRGeomFieldDefn("", eType),
-        pszFullName(CPLStrdup(pszFullNameIn)),
-        bSRSSet(bSRSSetIn)
-    {
-        poSRS = poSRSIn;
-    }
+    public:
+        OGRShapeGeomFieldDefn(const char* pszFullNameIn, OGRwkbGeometryType eType,
+                              int bSRSSetIn, OGRSpatialReference *poSRSIn) :
+            OGRGeomFieldDefn("", eType),
+            pszFullName(CPLStrdup(pszFullNameIn)),
+            bSRSSet(bSRSSetIn)
+        {
+            poSRS = poSRSIn;
+        }
 
-    virtual ~OGRShapeGeomFieldDefn() { CPLFree(pszFullName); }
+        virtual ~OGRShapeGeomFieldDefn() { CPLFree(pszFullName); }
 
-    virtual OGRSpatialReference* GetSpatialRef();
+        virtual OGRSpatialReference* GetSpatialRef();
 
-    const CPLString& GetPrjFilename() { return osPrjFile; }
+        const CPLString& GetPrjFilename() { return osPrjFile; }
 };
 
 /************************************************************************/
@@ -108,7 +108,7 @@ class OGRShapeLayer : public OGRAbstractProxiedLayer
     int                 bUpdateAccess;
 
     OGRwkbGeometryType  eRequestedGeomType;
-    int                 ResetGeomType(int nNewType);
+    int                 ResetGeomType( int nNewType );
 
     int                 ScanIndices();
 
@@ -122,7 +122,6 @@ class OGRShapeLayer : public OGRAbstractProxiedLayer
     void                ClearSpatialFIDs();
 
     int                 bHeaderDirty;
-    int                 bSHPNeedsRepack;
 
     int                 bCheckedForQIX;
     SHPTreeDiskHandle   hQIX;
@@ -134,7 +133,7 @@ class OGRShapeLayer : public OGRAbstractProxiedLayer
 
     int                 bSbnSbxDeleted;
 
-    CPLString           ConvertCodePage(const char *);
+    CPLString           ConvertCodePage( const char * );
     CPLString           osEncoding;
 
     int                 bTruncationWarningEmitted;
@@ -149,64 +148,64 @@ class OGRShapeLayer : public OGRAbstractProxiedLayer
 
     void                TruncateDBF();
 
-protected:
+  protected:
 
     virtual void        CloseUnderlyingLayer();
 
-    /* WARNING: each of the below public methods should start with a call to */
-    /* TouchLayer() and test its return value, so as to make sure that */
-    /* the layer is properly re-opened if necessary */
+/* WARNING: each of the below public methods should start with a call to */
+/* TouchLayer() and test its return value, so as to make sure that */
+/* the layer is properly re-opened if necessary */
 
-public:
-    OGRErr              CreateSpatialIndex(int nMaxDepth);
+  public:
+    OGRErr              CreateSpatialIndex( int nMaxDepth );
     OGRErr              DropSpatialIndex();
     OGRErr              Repack();
     OGRErr              RecomputeExtent();
     OGRErr              ResizeDBF();
 
-    void                SetResizeAtClose(int bFlag) { bResizeAtClose = bFlag; }
+    void                SetResizeAtClose( int bFlag ) { bResizeAtClose = bFlag; }
 
     const char         *GetFullName() { return pszFullName; }
 
     OGRFeature *        FetchShape(int iShapeId);
     int                 GetFeatureCountWithSpatialFilterOnly();
 
-public:
-    OGRShapeLayer(OGRShapeDataSource* poDSIn,
-        const char * pszName,
-        SHPHandle hSHP, DBFHandle hDBF,
-        OGRSpatialReference *poSRS, int bSRSSet,
-        int bUpdate,
-        OGRwkbGeometryType eReqType,
-        char ** papszCreateOptions = NULL);
-    ~OGRShapeLayer();
+  public:
+                        OGRShapeLayer( OGRShapeDataSource* poDSIn,
+                                       const char * pszName,
+                                       SHPHandle hSHP, DBFHandle hDBF,
+                                       OGRSpatialReference *poSRS, int bSRSSet,
+                                       int bUpdate,
+                                       OGRwkbGeometryType eReqType,
+                                       char ** papszCreateOptions = NULL);
+                        ~OGRShapeLayer();
 
     void                ResetReading();
     OGRFeature *        GetNextFeature();
-    virtual OGRErr      SetNextByIndex(long nIndex);
+    virtual OGRErr      SetNextByIndex( long nIndex );
 
-    OGRFeature         *GetFeature(long nFeatureId);
-    OGRErr              SetFeature(OGRFeature *poFeature);
-    OGRErr              DeleteFeature(long nFID);
-    OGRErr              CreateFeature(OGRFeature *poFeature);
+    OGRFeature         *GetFeature( long nFeatureId );
+    OGRErr              SetFeature( OGRFeature *poFeature );
+    OGRErr              DeleteFeature( long nFID );
+    OGRErr              CreateFeature( OGRFeature *poFeature );
     OGRErr              SyncToDisk();
 
     OGRFeatureDefn *    GetLayerDefn() { return poFeatureDefn; }
 
-    int                 GetFeatureCount(int);
+    int                 GetFeatureCount( int );
     OGRErr              GetExtent(OGREnvelope *psExtent, int bForce);
 
-    virtual OGRErr      CreateField(OGRFieldDefn *poField,
-        int bApproxOK = TRUE);
-    virtual OGRErr      DeleteField(int iField);
-    virtual OGRErr      ReorderFields(int* panMap);
-    virtual OGRErr      AlterFieldDefn(int iField, OGRFieldDefn* poNewFieldDefn, int nFlags);
+    virtual OGRErr      CreateField( OGRFieldDefn *poField,
+                                     int bApproxOK = TRUE );
+    virtual OGRErr      DeleteField( int iField );
+    virtual OGRErr      ReorderFields( int* panMap );
+    virtual OGRErr      AlterFieldDefn( int iField, OGRFieldDefn* poNewFieldDefn, int nFlags );
 
-    virtual int         TestCapability(const char *);
-    virtual void        SetSpatialFilter(OGRGeometry *);
-    virtual OGRErr      SetAttributeFilter(const char *);
+    virtual int         TestCapability( const char * );
+    virtual void        SetSpatialFilter( OGRGeometry * );
+    virtual OGRErr      SetAttributeFilter( const char * );
 
-    void                AddToFileList(CPLStringList& oFileList);
+    void                AddToFileList( CPLStringList& oFileList );
 };
 
 /************************************************************************/
@@ -234,41 +233,41 @@ class OGRShapeDataSource : public OGRDataSource
 
     char              **papszOpenOptions;
 
-public:
-    OGRShapeDataSource();
-    ~OGRShapeDataSource();
+  public:
+                        OGRShapeDataSource();
+                        ~OGRShapeDataSource();
 
     OGRLayerPool       *GetPool() { return poPool; }
 
-    int                 Open(GDALOpenInfo* poOpenInfo, int bTestOpen,
-        int bForceSingleFileDataSource = FALSE);
-    int                 OpenFile(const char *, int bUpdate, int bTestOpen);
+    int                 Open( GDALOpenInfo* poOpenInfo, int bTestOpen,
+                              int bForceSingleFileDataSource = FALSE );
+    int                 OpenFile( const char *, int bUpdate, int bTestOpen );
 
     virtual const char  *GetName() { return pszName; }
 
     virtual int          GetLayerCount();
-    virtual OGRLayer    *GetLayer(int);
+    virtual OGRLayer    *GetLayer( int );
     virtual OGRLayer    *GetLayerByName(const char *);
 
-    virtual OGRLayer    *ICreateLayer(const char *,
-        OGRSpatialReference * = NULL,
-        OGRwkbGeometryType = wkbUnknown,
-        char ** = NULL);
+    virtual OGRLayer    *ICreateLayer( const char *,
+                                      OGRSpatialReference * = NULL,
+                                      OGRwkbGeometryType = wkbUnknown,
+                                      char ** = NULL );
 
-    virtual OGRLayer    *ExecuteSQL(const char *pszStatement,
-        OGRGeometry *poSpatialFilter,
-        const char *pszDialect);
+    virtual OGRLayer    *ExecuteSQL( const char *pszStatement,
+                                     OGRGeometry *poSpatialFilter,
+                                     const char *pszDialect );
 
-    virtual int          TestCapability(const char *);
-    virtual OGRErr       DeleteLayer(int iLayer);
+    virtual int          TestCapability( const char * );
+    virtual OGRErr       DeleteLayer( int iLayer );
 
     virtual char      **GetFileList(void);
 
-    void                 SetLastUsedLayer(OGRShapeLayer* poLayer);
-    void                 UnchainLayer(OGRShapeLayer* poLayer);
+    void                 SetLastUsedLayer( OGRShapeLayer* poLayer );
+    void                 UnchainLayer( OGRShapeLayer* poLayer );
 
-    SHPHandle            DS_SHPOpen(const char * pszShapeFile, const char * pszAccess);
-    DBFHandle            DS_DBFOpen(const char * pszDBFFile, const char * pszAccess);
+    SHPHandle            DS_SHPOpen( const char * pszShapeFile, const char * pszAccess );
+    DBFHandle            DS_DBFOpen( const char * pszDBFFile, const char * pszAccess );
     char               **GetOpenOptions() { return papszOpenOptions; }
 };
 

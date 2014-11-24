@@ -115,7 +115,7 @@ static GDALDataset *OGRShapeDriverCreate( const char * pszName,
             CPLError( CE_Failure, CPLE_AppDefined,
                       "%s is not a directory.\n",
                       pszName );
-            
+
             return NULL;
         }
     }
@@ -124,7 +124,7 @@ static GDALDataset *OGRShapeDriverCreate( const char * pszName,
 /*      Does it end in the extension .shp indicating the user likely    */
 /*      wants to create a single file set?                              */
 /* -------------------------------------------------------------------- */
-    else if( EQUAL(CPLGetExtension(pszName),"shp") 
+    else if( EQUAL(CPLGetExtension(pszName),"shp")
              || EQUAL(CPLGetExtension(pszName),"dbf") )
     {
         bSingleNewFile = TRUE;
@@ -141,7 +141,7 @@ static GDALDataset *OGRShapeDriverCreate( const char * pszName,
                       "Failed to create directory %s\n"
                       "for shapefile datastore.\n",
                       pszName );
-            
+
             return NULL;
         }
     }
@@ -152,8 +152,9 @@ static GDALDataset *OGRShapeDriverCreate( const char * pszName,
     OGRShapeDataSource  *poDS = NULL;
 
     poDS = new OGRShapeDataSource();
-    
+
     GDALOpenInfo oOpenInfo( pszName, GA_Update );
+    oOpenInfo.papszOpenOptions = CSLDuplicate( papszOptions );
     if( !poDS->Open( &oOpenInfo, FALSE, bSingleNewFile ) )
     {
         delete poDS;
@@ -172,8 +173,8 @@ static CPLErr OGRShapeDriverDelete( const char *pszDataSource )
 {
     int iExt;
     VSIStatBufL sStatBuf;
-    static const char *apszExtensions[] = 
-        { "shp", "shx", "dbf", "sbn", "sbx", "prj", "idm", "ind", 
+    static const char *apszExtensions[] =
+        { "shp", "shx", "dbf", "sbn", "sbx", "prj", "idm", "ind",
           "qix", "cpg", NULL };
 
     if( VSIStatL( pszDataSource, &sStatBuf ) != 0 )
@@ -185,7 +186,7 @@ static CPLErr OGRShapeDriverDelete( const char *pszDataSource )
         return CE_Failure;
     }
 
-    if( VSI_ISREG(sStatBuf.st_mode) 
+    if( VSI_ISREG(sStatBuf.st_mode)
         && (EQUAL(CPLGetExtension(pszDataSource),"shp")
             || EQUAL(CPLGetExtension(pszDataSource),"shx")
             || EQUAL(CPLGetExtension(pszDataSource),"dbf")) )
@@ -203,15 +204,15 @@ static CPLErr OGRShapeDriverDelete( const char *pszDataSource )
         char **papszDirEntries = CPLReadDir( pszDataSource );
         int  iFile;
 
-        for( iFile = 0; 
+        for( iFile = 0;
              papszDirEntries != NULL && papszDirEntries[iFile] != NULL;
              iFile++ )
         {
-            if( CSLFindString( (char **) apszExtensions, 
+            if( CSLFindString( (char **) apszExtensions,
                                CPLGetExtension(papszDirEntries[iFile])) != -1)
             {
-                VSIUnlink( CPLFormFilename( pszDataSource, 
-                                            papszDirEntries[iFile], 
+                VSIUnlink( CPLFormFilename( pszDataSource,
+                                            papszDirEntries[iFile],
                                             NULL ) );
             }
         }
