@@ -67,5 +67,7 @@ protected:
     CPLString m_styles;
     CPLString m_srs;
     CPLString m_crs;
-    CPLString m_projection_wkt;    
+    CPLString m_projection_wkt;
+
+	CPLString m_identification_tolerance;
 };

@@ -77,6 +77,7 @@ CPLErr GDALWMSMiniDriver_AGS::Initialize(CPLXMLNode *config)
 	if (ret == CE_None) 
 	{
 		m_irs = CPLGetXMLValue(config, "ImageSR", "102100");
+		m_identification_tolerance = CPLGetXMLValue(config, "IdentificationTolerance", "2");
 	}
 
 	if (ret == CE_None)
@@ -134,8 +135,8 @@ void GDALWMSMiniDriver_AGS::ImageRequest(CPLString *url, const GDALWMSImageReque
 	URLAppendF(url, "&time=");
 	URLAppendF(url, "&layerTimeOptions=");
 	URLAppendF(url, "&dynamicLayers=");
-	
-	CPLDebug("AGS", "URL = %s", url->c_str());
+
+	CPLDebug("AGS", "URL = %s\n", url->c_str());
 }
 
 void GDALWMSMiniDriver_AGS::TiledImageRequest(CPLString *url, const GDALWMSImageRequestInfo &iri, const GDALWMSTiledImageRequestInfo &tiri) {
@@ -165,19 +166,38 @@ void GDALWMSMiniDriver_AGS::GetTiledImageInfo(CPLString *url,
 	URLAppendF(url, "&layerDefs=");
 	URLAppendF(url, "&time=");
 	URLAppendF(url, "&layerTimeOptions=");
-	URLAppendF(url, "&layers=");
 
-	URLAppendF(url, "&tolerance=2");
+	CPLString layers("visible");
+	if ( m_layers.find("show") != -1 )
+	{
+		layers = m_layers;
+		layers.replace( layers.find("show"), 4, "all" );
+	}
+	if ( m_layers.find("hide") != -1 )
+	{
+		layers = "top";
+	}
+	if ( m_layers.find("include") != -1 )
+	{
+		layers = "top";
+	}
+	if ( m_layers.find("exclude") != -1 )
+	{
+		layers = "top";
+	}
+
+	URLAppendF(url, "&layers=%s", layers.c_str());
+
+	URLAppendF(url, "&tolerance=%s", m_identification_tolerance.c_str());
 	URLAppendF(url, "&mapExtent=%.8f,%.8f,%.8f,%.8f", 
 		GetBBoxCoord(iri, m_bbox_order[0]), GetBBoxCoord(iri, m_bbox_order[1]), 
         GetBBoxCoord(iri, m_bbox_order[2]), GetBBoxCoord(iri, m_bbox_order[3]));
 	URLAppendF(url, "&imageDisplay=%d,%d,96", iri.m_sx,iri.m_sy);
-	URLAppendF(url, "&returnGeometry=true");
+	URLAppendF(url, "&returnGeometry=false");
 
 	URLAppendF(url, "&maxAllowableOffset=");
 	//URLAppendF(url, "&returnZ=false");
 	//URLAppendF(url, "&returnM=false");
-
     CPLDebug("AGS", "URL = %s", url->c_str());
 }
 
