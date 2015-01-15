@@ -410,7 +410,12 @@ OGRErr AddFeature(OGRLayer* const poOutLayer, OGRLineString* pPart, double dfFro
 //------------------------------------------------------------------------
 // CreateSubline
 //------------------------------------------------------------------------
-OGRErr CreateSubline(OGRLayer* const poPkLayer, double dfPosBeg, double dfPosEnd, OGRLayer* const poOutLayer, int bDisplayProgress, int bQuiet)
+OGRErr CreateSubline(OGRLayer* const poPkLayer,
+                     double dfPosBeg,
+                     double dfPosEnd,
+                     OGRLayer* const poOutLayer,
+                     CPL_UNUSED int bDisplayProgress,
+                     int bQuiet)
 {
     OGRFeature* pFeature = NULL;
     double dfBeg, dfEnd, dfStep;
@@ -430,7 +435,6 @@ OGRErr CreateSubline(OGRLayer* const poPkLayer, double dfPosBeg, double dfPosEnd
     }
     //get second part
     pFeature = poPkLayer->GetNextFeature();
-
     if (NULL != pFeature)
     {
         dfBeg = pFeature->GetFieldAsDouble(FIELD_START);
@@ -442,8 +446,6 @@ OGRErr CreateSubline(OGRLayer* const poPkLayer, double dfPosBeg, double dfPosEnd
         fprintf(stderr, "Get step for positions %f - %f failed\n", dfPosBeg, dfPosEnd);
         return OGRERR_FAILURE;
     }
-
-
     dfStep = dfEnd - dfBeg;
 
     //round input to step
@@ -539,7 +541,23 @@ OGRErr CreateSubline(OGRLayer* const poPkLayer, double dfPosBeg, double dfPosEnd
     return OGRERR_NONE;
 }
 
-
+//------------------------------------------------------------------------
+// Project
+//------------------------------------------------------------------------
+double Project(OGRLineString* pLine, OGRPoint* pPoint)
+{
+    if(NULL == pLine || NULL == pPoint)
+        return -1;
+    OGRPoint TestPoint;
+    pLine->StartPoint(&TestPoint);
+    if(TestPoint.Equals(pPoint))
+        return 0;
+    pLine->EndPoint(&TestPoint);
+    if(TestPoint.Equals(pPoint))
+        return pLine->get_Length();
+        
+    return pLine->Project(pPoint);    
+}
 
 //------------------------------------------------------------------------
 // CreatePartsFromLineString
@@ -571,16 +589,18 @@ OGRErr CreatePartsFromLineString(OGRLineString* pPathGeom, OGRLayer* const poPkL
             {
                 if (moRepers.find(dfReperPos) != moRepers.end())
                 {
-                    fprintf(stdout, "The distance %f is already present in repers file!\n", dfReperPos);
+                    CPLError(CE_Warning, CPLE_AppDefined,
+                        "The distance %f is already present in repers file!", dfReperPos);
                 }
             }
-            //check if reper incide path
-            dfTestDistance = pPathGeom->Project(pPt);
-            if (dfTestDistance == 0 || dfTestDistance == pPathGeom->get_Length())
+            //check if reper is incide the path
+            dfTestDistance = Project(pPathGeom, pPt);
+            if (dfTestDistance < 0)
             {
                 if (!bQuiet)
                 {
-                    fprintf(stdout, "The distance %f is out of path!\n", dfReperPos);
+                    CPLError(CE_Warning, CPLE_AppDefined,
+                        "The distance %f is out of path!", dfReperPos);
                 }
             }
             else
@@ -615,8 +635,8 @@ OGRErr CreatePartsFromLineString(OGRLineString* pPathGeom, OGRLayer* const poPkL
     ++IT;
     pt2 = IT->second;
 
-    double dfDistance1 = pPathGeom->Project(pt1);
-    double dfDistance2 = pPathGeom->Project(pt2);
+    double dfDistance1 = Project(pPathGeom, pt1);
+    double dfDistance2 = Project(pPathGeom, pt2);
 
     if (dfDistance1 > dfDistance2)
     {
@@ -626,8 +646,8 @@ OGRErr CreatePartsFromLineString(OGRLineString* pPathGeom, OGRLayer* const poPkL
         }
         pPathGeom->reversePoints();
 
-        dfDistance1 = pPathGeom->Project(pt1);
-        dfDistance2 = pPathGeom->Project(pt2);
+        dfDistance1 = Project(pPathGeom, pt1);
+        dfDistance2 = Project(pPathGeom, pt2);
     }
 
     OGRLineString* pPart = NULL;
@@ -698,12 +718,15 @@ OGRErr CreatePartsFromLineString(OGRLineString* pPathGeom, OGRLayer* const poPkL
         }
     }
 
-    pPart = pPathGeom->getSubLine(dfDistance1, dfDistance2, FALSE);
-    if (NULL != pPart)
+    if(dfDistance2 - dfDistance1 > DELTA)
     {
-        CURVE_DATA data = { pPart, dfPosition, IT->first, pPart->get_Length() / (IT->first - dfPosition) };
-        astSubLines.push_back(data);
-//        AddFeature(poOutLayer, pPart, dfPosition, IT->first, pPart->get_Length() / (IT->first - dfPosition), bQuiet);
+        pPart = pPathGeom->getSubLine(dfDistance1, dfDistance2, FALSE);
+        if (NULL != pPart)
+        {
+            CURVE_DATA data = { pPart, dfPosition, IT->first, pPart->get_Length() / (IT->first - dfPosition) };
+            astSubLines.push_back(data);
+    //        AddFeature(poOutLayer, pPart, dfPosition, IT->first, pPart->get_Length() / (IT->first - dfPosition), bQuiet);
+        }
     }
 
     GDALProgressFunc pfnProgress = NULL;
@@ -719,9 +742,9 @@ OGRErr CreatePartsFromLineString(OGRLineString* pPathGeom, OGRLayer* const poPkL
     int nCount = 2;
     dfDistance1 = dfDistance2;
     dfPosition = IT->first;
-    ++IT;//get third point    
+    ++IT; // get third point
 
-    double dfEndPosition;
+    double dfEndPosition = 0.0;
     while (IT != moRepers.end())
     {
         if (bDisplayProgress)
@@ -732,68 +755,74 @@ OGRErr CreatePartsFromLineString(OGRLineString* pPathGeom, OGRLayer* const poPkL
 
         dfEndPosition = IT->first;
 
-        dfDistance2 = pPathGeom->Project(IT->second);
+        dfDistance2 = Project(pPathGeom, IT->second);
 
-        pPart = pPathGeom->getSubLine(dfDistance1, dfDistance2, FALSE);
-        if (NULL != pPart)
+        if(dfDistance2 - dfDistance1 > DELTA)
         {
-            CURVE_DATA data = { pPart, dfPosition, IT->first, pPart->get_Length() / (IT->first - dfPosition) };
-            astSubLines.push_back(data);
-//            AddFeature(poOutLayer, pPart, dfPosition, IT->first, pPart->get_Length() / (IT->first - dfPosition), bQuiet);
-            dfDistance1 = dfDistance2;
-            dfPosition = IT->first;
+            pPart = pPathGeom->getSubLine(dfDistance1, dfDistance2, FALSE);
+            if (NULL != pPart)
+            {
+                CURVE_DATA data = { pPart, dfPosition, IT->first, pPart->get_Length() / (IT->first - dfPosition) };
+                astSubLines.push_back(data);
+    //            AddFeature(poOutLayer, pPart, dfPosition, IT->first, pPart->get_Length() / (IT->first - dfPosition), bQuiet);
+                dfDistance1 = dfDistance2;
+                dfPosition = IT->first;
+            }
         }
 
         ++IT;
     }
 
     //get last part
-    pPart = pPathGeom->getSubLine(dfDistance1, pPathGeom->get_Length(), FALSE);
-    if (NULL != pPart)
+    if(pPathGeom->get_Length() - dfDistance1 > DELTA)
     {
-        OGRSpatialReference* pSpaRef = pPathGeom->getSpatialReference();
-        double dfLen = pPart->get_Length();
-        if (pSpaRef->IsGeographic())
+        pPart = pPathGeom->getSubLine(dfDistance1, pPathGeom->get_Length(), FALSE);
+        if (NULL != pPart)
         {
-            //convert to UTM/WGS84
-            OGRPoint pt;
-            pPart->Value(dfLen / 2, &pt);
-            int nZoneEnv = 30 + (pt.getX() + 3.0) / 6.0 + 0.5;
-            int nEPSG;
-            if (pt.getY() > 0)
+            OGRSpatialReference* pSpaRef = pPathGeom->getSpatialReference();
+            double dfLen = pPart->get_Length();
+            if (pSpaRef->IsGeographic())
             {
-                nEPSG = 32600 + nZoneEnv;
+                //convert to UTM/WGS84
+                OGRPoint pt;
+                pPart->Value(dfLen / 2, &pt);
+                int nZoneEnv = 30 + (pt.getX() + 3.0) / 6.0 + 0.5;
+                int nEPSG;
+                if (pt.getY() > 0)
+                {
+                    nEPSG = 32600 + nZoneEnv;
+                }
+                else
+                {
+                    nEPSG = 32700 + nZoneEnv;
+                }
+                OGRSpatialReference SpatRef;
+                SpatRef.importFromEPSG(nEPSG);
+                OGRGeometry *pTransformPart = pPart->clone();
+                if (pTransformPart->transformTo(&SpatRef) == OGRERR_NONE)
+                {
+                    OGRLineString* pTransformPartLS = (OGRLineString*)pTransformPart;
+                    dfLen = pTransformPartLS->get_Length();
+                }
+                CURVE_DATA data = { pPart, dfPosition, dfPosition + dfLen, pPart->get_Length() / dfLen };
+                astSubLines.push_back(data);
+                //AddFeature(poOutLayer, pPart, dfPosition, dfPosition + dfLen, pPart->get_Length() / dfLen, bQuiet);
+
+                pPtEnd = new OGRPoint();
+                pPart->getPoint(pPart->getNumPoints() - 1, pPtEnd);
+                dfPtEndPosition = dfPosition + dfLen;
+
+                delete pTransformPart;
             }
             else
             {
-                nEPSG = 32700 + nZoneEnv;
+                CURVE_DATA data = { pPart, dfPosition, dfPosition + dfLen, 1.0 };
+                astSubLines.push_back(data);
+                //AddFeature(poOutLayer, pPart, dfPosition - dfLen, dfPosition, 1.0, bQuiet);
+                pPtEnd = new OGRPoint();
+                pPart->getPoint(pPart->getNumPoints() - 1, pPtEnd);
+                dfPtEndPosition = dfPosition + dfLen;
             }
-            OGRSpatialReference SpatRef;
-            SpatRef.importFromEPSG(nEPSG);
-            OGRGeometry *pTransformPart = pPart->clone();
-            if (pTransformPart->transformTo(&SpatRef) == OGRERR_NONE)
-            {
-                OGRLineString* pTransformPartLS = (OGRLineString*)pTransformPart;
-                dfLen = pTransformPartLS->get_Length();
-            }
-            CURVE_DATA data = { pPart, dfPosition, dfPosition + dfLen, pPart->get_Length() / dfLen };
-            astSubLines.push_back(data);
-            //AddFeature(poOutLayer, pPart, dfPosition, dfPosition + dfLen, pPart->get_Length() / dfLen, bQuiet);
-
-            pPtEnd = new OGRPoint();
-            pPart->getPoint(pPart->getNumPoints() - 1, pPtEnd);
-            dfPtEndPosition = dfPosition + dfLen;
-
-            delete pTransformPart;
-        }
-        else
-        {
-            CURVE_DATA data = { pPart, dfPosition, dfPosition + dfLen, 1.0 };
-            astSubLines.push_back(data);
-            //AddFeature(poOutLayer, pPart, dfPosition - dfLen, dfPosition, 1.0, bQuiet);
-            pPtEnd = new OGRPoint();
-            pPart->getPoint(pPart->getNumPoints() - 1, pPtEnd);
-            dfPtEndPosition = dfPosition + dfLen;
         }
     }
 
@@ -865,9 +894,9 @@ OGRErr CreatePartsFromLineString(OGRLineString* pPathGeom, OGRLayer* const poPkL
             nCount++;
         }
 
-        dfDistance2 = pPathGeom->Project(IT->second);
+        dfDistance2 = Project(pPathGeom, IT->second);
 
-        if (dfDistance1 != dfDistance2)
+        if (dfDistance2 - dfDistance1 > DELTA)
         {
             pPart = pPathGeom->getSubLine(dfDistance1, dfDistance2, FALSE);
             if (NULL != pPart)
@@ -900,7 +929,6 @@ OGRErr CreatePartsFromLineString(OGRLineString* pPathGeom, OGRLayer* const poPkL
 //------------------------------------------------------------------------
 OGRErr CreateParts(OGRLayer* const poLnLayer, OGRLayer* const poPkLayer, int nMValField, double dfStep, OGRLayer* const poOutLayer, int bDisplayProgress, int bQuiet, const char* pszOutputSepFieldName = NULL, const char* pszOutputSepFieldValue = NULL)
 {
-
     OGRErr eRetCode = OGRERR_FAILURE;
 
     //check path and get first line
@@ -908,7 +936,6 @@ OGRErr CreateParts(OGRLayer* const poLnLayer, OGRLayer* const poPkLayer, int nMV
     if (wkbFlatten(eGeomType) != wkbLineString && wkbFlatten(eGeomType) != wkbMultiLineString)
     {
         fprintf(stderr, "Unsupported geometry type %s for path\n", OGRGeometryTypeToName(eGeomType));
-
         return eRetCode;
     }
 
@@ -934,13 +961,11 @@ OGRErr CreateParts(OGRLayer* const poLnLayer, OGRLayer* const poPkLayer, int nMV
                 pPath->assignSpatialReference(pGeomColl->getSpatialReference());
                 eRetCode = CreatePartsFromLineString(pPath, poPkLayer, nMValField, dfStep, poOutLayer, bDisplayProgress, bQuiet, pszOutputSepFieldName, pszOutputSepFieldValue);
 
-
                 if (eRetCode != OGRERR_NONE)
                 {
                     OGRFeature::DestroyFeature(pPathFeature);
                     return eRetCode;
                 }
-
             }
         }
         else
@@ -1011,7 +1036,11 @@ OGRErr CreatePartsMultiple(OGRLayer* const poLnLayer, const char* pszLineSepFiel
 //------------------------------------------------------------------------
 // GetPosition
 //------------------------------------------------------------------------
-OGRErr GetPosition(OGRLayer* const poPkLayer, double dfX, double dfY, int bDisplayProgress, int bQuiet)
+OGRErr GetPosition(OGRLayer* const poPkLayer,
+                   double dfX,
+                   double dfY,
+                   CPL_UNUSED int bDisplayProgress,
+                   int bQuiet)
 {
     //create point
     OGRPoint pt;
@@ -1043,25 +1072,23 @@ OGRErr GetPosition(OGRLayer* const poPkLayer, double dfX, double dfY, int bDispl
         OGRFeature::DestroyFeature(pFeature);
     }
 
-
-    if (NULL == pCloserPart)
+    if(NULL == pCloserPart)
     {
         fprintf(stderr, "Filed to find closest part\n");
         return OGRERR_FAILURE;
     }
-
     //now we have closest part
     //get real distance
-    double dfRealDist = pCloserPart->Project(&pt);
+    double dfRealDist = Project(pCloserPart, &pt);
     //compute reference distance
     double dfRefDist = dfBeg + dfRealDist / dfScale;
     if (bQuiet == TRUE)
     {
-        fprintf(stdout, "%f\n", dfRefDist);
+        fprintf(stdout, "%s", CPLSPrintf("%f\n", dfRefDist));
     }
     else
     {
-        fprintf(stdout, "The position for coordinates lat:%f, long:%f is %f\n", dfY, dfX, dfRefDist);
+        fprintf(stdout, "%s", CPLSPrintf("The position for coordinates lat:%f, long:%f is %f\n", dfY, dfX, dfRefDist));
     }
 
     return OGRERR_NONE;
@@ -1070,7 +1097,10 @@ OGRErr GetPosition(OGRLayer* const poPkLayer, double dfX, double dfY, int bDispl
 //------------------------------------------------------------------------
 // GetCoordinates
 //------------------------------------------------------------------------
-OGRErr GetCoordinates(OGRLayer* const poPkLayer, double dfPos, int bDisplayProgress, int bQuiet)
+OGRErr GetCoordinates(OGRLayer* const poPkLayer,
+                      double dfPos,
+                      CPL_UNUSED int bDisplayProgress,
+                      int bQuiet)
 {
     CPLString szAttributeFilter;
     szAttributeFilter.Printf("%s < %f AND %s > %f", FIELD_START, dfPos, FIELD_FINISH, dfPos);
@@ -1093,11 +1123,11 @@ OGRErr GetCoordinates(OGRLayer* const poPkLayer, double dfPos, int bDisplayProgr
 
         if (bQuiet == TRUE)
         {
-            fprintf(stdout, "%f,%f,%f\n", pt.getX(), pt.getY(), pt.getZ());
+            fprintf(stdout, "%s", CPLSPrintf("%f,%f,%f\n", pt.getX(), pt.getY(), pt.getZ()));
         }
         else
         {
-            fprintf(stdout, "The position for distance %f is lat:%f, long:%f, height:%f\n", dfPos, pt.getY(), pt.getX(), pt.getZ());
+            fprintf(stdout, "%s", CPLSPrintf("The position for distance %f is lat:%f, long:%f, height:%f\n", dfPos, pt.getY(), pt.getX(), pt.getZ()));
         }
         OGRFeature::DestroyFeature(pFeature);
     }
@@ -1742,4 +1772,3 @@ int main( int nArgc, char ** papszArgv )
     
     return eErr == OGRERR_NONE ? 0 : 1;
 }
-
