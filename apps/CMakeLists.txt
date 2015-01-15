@@ -171,6 +171,8 @@ apps_macro("gdal_grid" "${gdal_grid_CSOURCES}" "${gdal_grid_HHEADERS}")
 	)
 	apps_macro("ogrlineref" "${ogrlineref_CSOURCES}" "${ogrlineref_HHEADERS}") 
 	
+option(GDAL_BUILD_NETWORK_SUPPORT "Set ON to build geography network support" ON)
+if(GDAL_BUILD_NETWORK_SUPPORT)    
 #gnminfo
 	set(gnminfo_HHEADERS
 	)
@@ -180,8 +182,7 @@ apps_macro("gdal_grid" "${gdal_grid_CSOURCES}" "${gdal_grid_HHEADERS}")
         commonutils.cpp
 	)
 	apps_macro("gnminfo" "${gnminfo_CSOURCES}" "${gnminfo_HHEADERS}") 
-
-    	   
+endif()      	   
 
 endif(GDAL_BUILD_APPS)
 

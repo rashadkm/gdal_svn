@@ -34,9 +34,6 @@ include_directories(${GDAL_ROOT_SOURCE_DIR}/ogr/ogrsf_frmts)
 include_directories(${GDAL_ROOT_SOURCE_DIR}/ogr)
 include_directories(${GDAL_ROOT_SOURCE_DIR}/gcore)
 
-option(GDAL_BUILD_NETWORK_SUPPORT "Set ON to build geography network support" ON)
-if(GDAL_BUILD_NETWORK_SUPPORT)
-
 set(LIB_INST_HEADERS #${LIB_INST_HEADERS} #user api
   gnm.h
 #PARENT_SCOPE
@@ -54,6 +51,4 @@ set(LIB_CSOURCES
 
 set(GDAL_TARGET_OBJECTS ${GDAL_TARGET_OBJECTS} $<TARGET_OBJECTS:${LIB_NAME}> PARENT_SCOPE)
 add_library(${LIB_NAME} OBJECT ${LIB_HHEADERS} ${LIB_CSOURCES})
-
-endif()
 
