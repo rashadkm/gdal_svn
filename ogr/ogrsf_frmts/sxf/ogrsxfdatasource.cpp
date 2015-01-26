@@ -199,7 +199,7 @@ int OGRSXFDataSource::Open( const char * pszFilename, int bUpdateIn)
 
     if ( oSXFPassport.version < 3 )
     {
-        CPLError(CE_Failure, CPLE_NotSupported , "SXF File version not supported");
+        CPLError(CE_Failure, CPLE_NotSupported , "SXF: File version is not supported");
         CloseFile();
         return FALSE;
     }
@@ -207,7 +207,7 @@ int OGRSXFDataSource::Open( const char * pszFilename, int bUpdateIn)
     // read description
     if (ReadSXFDescription(fpSXF, oSXFPassport) != OGRERR_NONE)
     {
-        CPLError(CE_Failure, CPLE_NotSupported, "SXF. Wrong description.");
+        CPLError(CE_Failure, CPLE_NotSupported, "SXF: Wrong description");
         CloseFile();
         return FALSE;
     }
@@ -216,7 +216,7 @@ int OGRSXFDataSource::Open( const char * pszFilename, int bUpdateIn)
     //read flags 
     if (ReadSXFInformationFlags(fpSXF, oSXFPassport) != OGRERR_NONE)
     {
-        CPLError(CE_Failure, CPLE_NotSupported, "SXF. Wrong state of the data.");
+        CPLError(CE_Failure, CPLE_NotSupported, "SXF: Wrong state of the data");
         CloseFile();
         return FALSE;
     }
@@ -224,7 +224,7 @@ int OGRSXFDataSource::Open( const char * pszFilename, int bUpdateIn)
     if (oSXFPassport.informationFlags.bProjectionDataCompliance == false)
     {
         CPLError( CE_Failure, CPLE_NotSupported,
-                  "SXF. Data are not corresponde to the projection." );
+                  "SXF: Data don't match the projection" );
         CloseFile();
         return FALSE;
     }
@@ -232,7 +232,7 @@ int OGRSXFDataSource::Open( const char * pszFilename, int bUpdateIn)
     //read spatial data
     if (ReadSXFMapDescription(fpSXF, oSXFPassport) != OGRERR_NONE)
     {
-        CPLError(CE_Failure, CPLE_NotSupported, "SXF. Wrong state of the data.");
+        CPLError(CE_Failure, CPLE_NotSupported, "SXF: Wrong state of the data.");
         CloseFile();
         return FALSE;
     }
@@ -240,7 +240,7 @@ int OGRSXFDataSource::Open( const char * pszFilename, int bUpdateIn)
     if(oSXFPassport.informationFlags.bRealCoordinatesCompliance == false )
     {
         CPLError( CE_Warning, CPLE_NotSupported,
-                  "SXF. Given material may be rotated in the conditional system of coordinates" );
+                  "SXF: Given material may be rotated in the conditional system of coordinates" );
     }
 
 /*---------------- TRY READ THE RSC FILE HEADER  -----------------------*/
@@ -456,7 +456,7 @@ void OGRSXFDataSource::SetVertCS(const long iVCS, SXFPassport& passport)
 
     if (nEPSG == 0)
     {
-        CPLError(CE_Warning, CPLE_NotSupported, "SXF. Vertical coordinate system (SXF index %ld) not supported", iVCS);
+        CPLError(CE_Warning, CPLE_NotSupported, "SXF: Vertical coordinate system (SXF index %ld) is not supported", iVCS);
         return;
     }
 
@@ -464,13 +464,13 @@ void OGRSXFDataSource::SetVertCS(const long iVCS, SXFPassport& passport)
     OGRErr eImportFromEPSGErr = sr->importFromEPSG(nEPSG);
     if (eImportFromEPSGErr != OGRERR_NONE)
     {
-        CPLError( CE_Warning, CPLE_None, "SXF. Vertical coordinate system (SXF index %ld, EPSG %ld) import from EPSG error", iVCS, nEPSG);
+        CPLError( CE_Warning, CPLE_None, "SXF: Vertical coordinate system (SXF index %ld, EPSG %ld) can't be imported from EPSG", iVCS, nEPSG);
         return;
     }
 
     if (sr->IsVertical() != 1)
     {
-        CPLError( CE_Warning, CPLE_None, "SXF. Coordinate system (SXF index %ld, EPSG %ld) is not Vertical", iVCS, nEPSG);
+        CPLError( CE_Warning, CPLE_None, "SXF: Coordinate system (SXF index %ld, EPSG %ld) is not Vertical", iVCS, nEPSG);
         return;
     }
 
@@ -478,7 +478,7 @@ void OGRSXFDataSource::SetVertCS(const long iVCS, SXFPassport& passport)
     OGRErr eSetVertCSErr = passport.stMapDescription.pSpatRef->SetVertCS(sr->GetAttrValue("VERT_CS"), sr->GetAttrValue("VERT_DATUM"));
     if (eSetVertCSErr != OGRERR_NONE)
     {
-        CPLError(CE_Warning, CPLE_None, "SXF. Vertical coordinate system (SXF index %ld, EPSG %ld) set error", iVCS, nEPSG);
+        CPLError(CE_Warning, CPLE_None, "SXF: Vertical coordinate system (SXF index %ld, EPSG %ld) set error", iVCS, nEPSG);
         return;
     }
 }
