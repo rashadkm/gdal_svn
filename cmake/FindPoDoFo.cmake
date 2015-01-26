@@ -1,31 +1,26 @@
-# Find PoDoFo
-# ~~~~~~~~
-# Redistribution and use is allowed according to the terms of the BSD license.
-# For details see the accompanying COPYING-CMAKE-SCRIPTS file.
+#---
+# File: FindPodofo.cmake
 #
-# Once run this will define:
+# Find the native podofo includes and library
 #
-# PoDoFo_FOUND        = system has PoDoFo lib
-# PoDoFo_LIBRARY      = full path to the PoDoFo libraries
-# PoDoFo_INCLUDE_DIRS = where to find headers
-#
+# This module defines:
+#  PODOFO_INCLUDE_DIR, where to find tiff.h, etc.
+#  PODOFO_LIBRARY, library to link against to use PODOFO.
+#  PODOFO_FOUND, If false, do not try to use PODOFO.
+# 
+# Taken from: http://svn.osgeo.org/ossim/trunk/ossim_package_support/cmake/CMakeModules/FindPodofo.cmake
+# $Id$
+#---
 
-FIND_PATH(PoDoFo_INCLUDE_DIRS PATHS
-    )
+# Find include path:
+find_path(PODOFO_INCLUDE_DIR podofo/podofo.h PATHS /usr/include /usr/local/include
+)
 
-SET(LIB_SEARCH_PATH 
-    )
+# Find library:
+find_library(PODOFO_LIBRARY NAMES podofo PATHS /usr/lib64 /usr/lib /usr/local/lib)
 
-FIND_LIBRARY(PoDoFo_LIBRARY NAMES PATHS LIB_SEARCH_PATH)
-
-IF (PoDoFo_INCLUDE_DIRS AND PoDoFo_LIBRARY)
-  SET(PoDoFo_FOUND TRUE)
-ENDIF (PoDoFo_INCLUDE_DIRS AND PoDoFo_LIBRARY)
-
-IF (PoDoFo_FOUND)
-    MESSAGE(STATUS "Found PoDoFo: ${PoDoFo_LIBRARY}")
-ELSE (PoDoFo_FOUND)
-  IF (PoDoFo_FIND_REQUIRED)
-    MESSAGE(FATAL_ERROR "Could not find PoDoFo")
-  ENDIF (PoDoFo_FIND_REQUIRED)
-ENDIF (PoDoFo_FOUND)
+#---
+# This function sets PODOFO_FOUND if variables are valid.
+#--- 
+include(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(PODOFO  DEFAULT_MSG  PODOFO_LIBRARY  PODOFO_INCLUDE_DIR)

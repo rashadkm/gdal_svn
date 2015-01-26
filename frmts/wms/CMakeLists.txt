@@ -41,6 +41,7 @@ set(LIB_HHEADERS
     minidriver_virtualearth.h
     minidriver_wms.h
     minidriver_worldwind.h
+    minidriver_arcgis_server.h
     wmsdriver.h
     wmsmetadataset.h
 )
@@ -58,6 +59,7 @@ set(LIB_CSOURCES
     minidriver_worldwind.cpp
     minidriver_tms.cpp
     minidriver_tiled_wms.cpp
+    minidriver_arcgis_server.cpp
     wmsmetadataset.cpp 
     minidriver_virtualearth.cpp
     wmsutils.cpp
