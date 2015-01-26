@@ -684,7 +684,7 @@ OGRFeature *OGRSXFLayer::GetNextRawFeature(long nFID)
     else if (code == 0x04) // xxxx0100
     {
         CPLError(CE_Warning, CPLE_NotSupported,
-            "SXF. Not support type.");
+            "SXF: Type is not supported");
         eGeomType = SXF_GT_Vector;
     }
     else if (code == 0x05) // xxxx0101
@@ -698,7 +698,7 @@ OGRFeature *OGRSXFLayer::GetNextRawFeature(long nFID)
     bool bHasRefVector = CHECK_BIT(stRecordHeader.nRef[1], 3);
     if (bHasRefVector == true)
         CPLError(CE_Failure, CPLE_NotSupported,
-        "SXF. Parsing the vector of the tying not support.");
+        "SXF: Parsing the vector of the this type is not supported");
 
     SXFRecordDescription stCertInfo;
     if (stRecordHeader.nPointCountSmall == 65535)
@@ -796,21 +796,21 @@ OGRFeature *OGRSXFLayer::GetNextRawFeature(long nFID)
     else if (eGeomType == SXF_GT_Vector )
     {
       CPLError( CE_Warning, CPLE_NotSupported,
-      "SXF. Geometry type Vector do not support." );
+      "SXF: Geometry type Vector is not supported" );
       CPLFree(recordCertifBuf);
       return NULL;
     }
     else if (eGeomType == SXF_GT_TextTemplate ) // TODO realise this
     {
       CPLError( CE_Warning, CPLE_NotSupported,
-      "SXF. Geometry type Text Template do not support." );
+      "SXF: Geometry type Text Template is not supported" );
       CPLFree(recordCertifBuf);
       return NULL;
     }
     else
     {
         CPLError(CE_Failure, CPLE_NotSupported,
-            "SXF. Unsupported geometry type.");
+            "SXF: Unsupported geometry type");
         CPLFree(recordCertifBuf);
         return NULL;
     }
@@ -1258,7 +1258,7 @@ OGRFeature *OGRSXFLayer::TranslateVetorAngle(const SXFRecordDescription& certifI
     if (certifInfo.nPointCount != 2)
     {
         CPLError(CE_Failure, CPLE_NotSupported,
-            "SXF. The vector object should have 2 points, but not.");
+            "SXF: The vector object should have 2 points");
         return NULL;
     }
 
