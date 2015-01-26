@@ -879,8 +879,10 @@ int OGR2SQLITE_Close(sqlite3_vtab_cursor* pCursor)
 
 static
 int OGR2SQLITE_Filter(sqlite3_vtab_cursor* pCursor,
-                      int idxNum, const char *idxStr,
-                      int argc, sqlite3_value **argv)
+                      CPL_UNUSED int idxNum,
+                      const char *idxStr,
+                      int argc,
+                      sqlite3_value **argv)
 {
     OGR2SQLITE_vtab_cursor* pMyCursor = (OGR2SQLITE_vtab_cursor*) pCursor;
 #ifdef DEBUG_OGR2SQLITE
@@ -976,9 +978,9 @@ int OGR2SQLITE_Filter(sqlite3_vtab_cursor* pCursor,
                 CPLSPrintf(CPL_FRMT_GIB, sqlite3_value_int64 (argv[i]));
         }
         else if (sqlite3_value_type (argv[i]) == SQLITE_FLOAT)
-        {
+        { // Insure that only Decimal.Points are used, never local settings such as Decimal.Comma.
             osAttributeFilter +=
-                CPLSPrintf("%.18g", sqlite3_value_double (argv[i]));
+                CPLString().FormatC(sqlite3_value_double (argv[i]),"%.18g").c_str();
         }
         else if (sqlite3_value_type (argv[i]) == SQLITE_TEXT)
         {
@@ -1330,7 +1332,7 @@ int OGR2SQLITE_Rowid(sqlite3_vtab_cursor* pCursor, sqlite3_int64 *pRowid)
 /************************************************************************/
 
 static
-int OGR2SQLITE_Rename(sqlite3_vtab *pVtab, const char *zNew)
+int OGR2SQLITE_Rename(CPL_UNUSED sqlite3_vtab *pVtab, CPL_UNUSED const char *zNew)
 {
     //CPLDebug("OGR2SQLITE", "Rename");
     return SQLITE_ERROR;

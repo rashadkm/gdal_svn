@@ -11,6 +11,7 @@
  *
  **********************************************************************
  * Copyright (c) 1999-2002, Daniel Morissette
+ * Copyright (c) 2014, Even Rouault <even.rouault at spatialys.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -183,7 +184,7 @@ void TABView::ResetReading()
  *
  * Returns 0 on success, -1 on error.
  **********************************************************************/
-int TABView::Open(const char *pszFname, const char *pszAccess,
+int TABView::Open(const char *pszFname, TABAccess eAccess,
                   GBool bTestOpenNoError /*= FALSE*/ )
 {
     char nStatus = 0;
@@ -198,12 +199,12 @@ int TABView::Open(const char *pszFname, const char *pszAccess,
     /*-----------------------------------------------------------------
      * Validate access mode and call the right open method
      *----------------------------------------------------------------*/
-    if (EQUALN(pszAccess, "r", 1))
+    if (eAccess == TABRead)
     {
         m_eAccessMode = TABRead;
         nStatus = (char)OpenForRead(pszFname, bTestOpenNoError);
     }
-    else if (EQUALN(pszAccess, "w", 1))
+    else if (eAccess == TABWrite)
     {
         m_eAccessMode = TABWrite;
         nStatus = (char)OpenForWrite(pszFname);
@@ -211,7 +212,7 @@ int TABView::Open(const char *pszFname, const char *pszAccess,
     else
     {
         CPLError(CE_Failure, CPLE_NotSupported,
-                 "Open() failed: access mode \"%s\" not supported", pszAccess);
+                 "Open() failed: access mode \"%d\" not supported", eAccess);
         return -1;
     }
 
@@ -357,7 +358,7 @@ int TABView::OpenForRead(const char *pszFname,
         m_papoTABFiles[iFile] = new TABFile;
    
         if ( m_papoTABFiles[iFile]->Open(m_papszTABFnames[iFile],
-                                         "rb", bTestOpenNoError) != 0)
+                                         m_eAccessMode, bTestOpenNoError) != 0)
         {
             // Open Failed... an error has already been reported, just return.
             if (bTestOpenNoError)
@@ -460,7 +461,7 @@ int TABView::OpenForWrite(const char *pszFname)
         
         m_papoTABFiles[iFile] = new TABFile;
    
-        if ( m_papoTABFiles[iFile]->Open(m_papszTABFnames[iFile], "wb") != 0)
+        if ( m_papoTABFiles[iFile]->Open(m_papszTABFnames[iFile], m_eAccessMode) != 0)
         {
             // Open Failed... an error has already been reported, just return.
             CPLFree(pszPath);
@@ -662,7 +663,7 @@ int TABView::ParseTABFile(const char *pszDatasetPath,
  **********************************************************************/
 int TABView::WriteTABFile()
 {
-    FILE *fp;
+    VSILFILE *fp;
 
     CPLAssert(m_eAccessMode == TABWrite);
     CPLAssert(m_numTABFiles == 2);
@@ -672,37 +673,37 @@ int TABView::WriteTABFile()
     char *pszTable1 = TABGetBasename(m_papszTABFnames[0]);
     char *pszTable2 = TABGetBasename(m_papszTABFnames[1]);
 
-    if ( (fp = VSIFOpen(m_pszFname, "wt")) != NULL)
+    if ( (fp = VSIFOpenL(m_pszFname, "wt")) != NULL)
     {
         // Version is always 100, no matter what the sub-table's version is
-        fprintf(fp, "!Table\n");
-        fprintf(fp, "!Version 100\n");
+        VSIFPrintfL(fp, "!Table\n");
+        VSIFPrintfL(fp, "!Version 100\n");
 
-        fprintf(fp, "Open Table \"%s\" Hide\n", pszTable1);
-        fprintf(fp, "Open Table \"%s\" Hide\n", pszTable2);
-        fprintf(fp, "\n");
-        fprintf(fp, "Create View %s As\n", pszTable);
-        fprintf(fp, "Select ");
+        VSIFPrintfL(fp, "Open Table \"%s\" Hide\n", pszTable1);
+        VSIFPrintfL(fp, "Open Table \"%s\" Hide\n", pszTable2);
+        VSIFPrintfL(fp, "\n");
+        VSIFPrintfL(fp, "Create View %s As\n", pszTable);
+        VSIFPrintfL(fp, "Select ");
 
         OGRFeatureDefn *poDefn = GetLayerDefn();
         for(int iField=0; iField<poDefn->GetFieldCount(); iField++)
         {
             OGRFieldDefn *poFieldDefn = poDefn->GetFieldDefn(iField);
             if (iField == 0)
-                fprintf(fp, "%s", poFieldDefn->GetNameRef());
+                VSIFPrintfL(fp, "%s", poFieldDefn->GetNameRef());
             else
-                fprintf(fp, ",%s", poFieldDefn->GetNameRef());
+                VSIFPrintfL(fp, ",%s", poFieldDefn->GetNameRef());
         }
-        fprintf(fp, "\n");
+        VSIFPrintfL(fp, "\n");
 
-        fprintf(fp, "From %s, %s\n", pszTable2, pszTable1);
-        fprintf(fp, "Where %s.%s=%s.%s\n", pszTable2, 
+        VSIFPrintfL(fp, "From %s, %s\n", pszTable2, pszTable1);
+        VSIFPrintfL(fp, "Where %s.%s=%s.%s\n", pszTable2, 
                                            m_poRelation->GetRelFieldName(),
                                            pszTable1, 
                                            m_poRelation->GetMainFieldName());
 
 
-        VSIFClose(fp);
+        VSIFCloseL(fp);
     }
     else
     {
@@ -967,7 +968,7 @@ OGRFeatureDefn *TABView::GetLayerDefn()
  * properly, so this function can be used only with an empty feature defn.
  **********************************************************************/
 int TABView::SetFeatureDefn(OGRFeatureDefn *poFeatureDefn,
-                         TABFieldType *paeMapInfoNativeFieldTypes /* =NULL */)
+                            CPL_UNUSED TABFieldType *paeMapInfoNativeFieldTypes /* =NULL */)
 {
     if (m_poRelation)
         return m_poRelation->SetFeatureDefn(poFeatureDefn);
@@ -2088,7 +2089,7 @@ int TABRelation::WriteFeature(TABFeature *poFeature, int nFeatureId /*=-1*/)
  * Returns 0 on success, -1 on error.
  **********************************************************************/
 int TABRelation::SetFeatureDefn(OGRFeatureDefn *poFeatureDefn,
-                         TABFieldType *paeMapInfoNativeFieldTypes /* =NULL */)
+                                CPL_UNUSED TABFieldType *paeMapInfoNativeFieldTypes /* =NULL */)
 {
     if (m_poDefn && m_poDefn->GetFieldCount() > 0)
     {

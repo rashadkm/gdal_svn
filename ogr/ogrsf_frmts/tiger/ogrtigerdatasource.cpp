@@ -319,6 +319,11 @@ int OGRTigerDataSource::Open( const char * pszFilename, int bTestOpen,
     if( VSI_ISREG(stat.st_mode) )
     {
         char       szModule[128];
+        
+        if( strlen(CPLGetFilename(pszFilename)) == 0 )
+        {
+            return FALSE;
+        }
 
         pszPath = CPLStrdup( CPLGetPath(pszFilename) );
 
@@ -814,19 +819,18 @@ int OGRTigerDataSource::Create( const char *pszNameIn, char **papszOptions )
 /*                           ICreateLayer()                             */
 /************************************************************************/
 
-OGRLayer *OGRTigerDataSource::ICreateLayer( const char *pszLayerName, 
-                                           OGRSpatialReference *poSpatRef, 
-                                           OGRwkbGeometryType eGType, 
-                                           char **papszOptions )
-
+OGRLayer *OGRTigerDataSource::ICreateLayer( const char *pszLayerName,
+                                            OGRSpatialReference *poSpatRef,
+                                            CPL_UNUSED OGRwkbGeometryType eGType,
+                                            CPL_UNUSED char **papszOptions )
 {
     OGRTigerLayer       *poLayer = NULL;
 
     if( GetLayer( pszLayerName ) != NULL )
         return GetLayer( pszLayerName );
 
-    if( poSpatRef != NULL && 
-        (!poSpatRef->IsGeographic() 
+    if( poSpatRef != NULL &&
+        (!poSpatRef->IsGeographic()
          || !EQUAL(poSpatRef->GetAttrValue("DATUM"),
                    "North_American_Datum_1983")) )
     {

@@ -139,11 +139,10 @@ CPLErr OGRSQLiteTableLayer::Initialize( const char *pszTableName,
                                         OGRSpatialReference *poSRS,
                                         int nSRSId,
                                         int bHasSpatialIndex,
-                                        int bHasM, 
+                                        int bHasM,
                                         int bIsVirtualShapeIn )
-
 {
-    int rc;
+    /* int rc; */
     sqlite3 *hDB = poDS->GetDB();
 
     if( pszGeomFormat )
@@ -181,22 +180,22 @@ CPLErr OGRSQLiteTableLayer::Initialize( const char *pszTableName,
 
     pszEscapedTableName = CPLStrdup(OGRSQLiteEscape(pszTableName));
 
-    sqlite3_stmt *hColStmt = NULL;
+    // sqlite3_stmt *hColStmt = NULL;
     const char *pszSQL;
 
     if ( eGeomFormat == OSGF_SpatiaLite &&
-         poDS->IsSpatialiteLoaded() && 
+         poDS->IsSpatialiteLoaded() &&
          poDS->GetSpatialiteVersionNumber() < 24 && poDS->GetUpdate() )
     {
-    // we need to test version required by Spatialite TRIGGERs 
-        hColStmt = NULL;
+        // we need to test version required by Spatialite TRIGGERs
+        // hColStmt = NULL;
         pszSQL = CPLSPrintf( "SELECT sql FROM sqlite_master WHERE type = 'trigger' AND tbl_name = '%s' AND sql LIKE '%%RTreeAlign%%'",
             pszEscapedTableName );
 
         int nRowTriggerCount, nColTriggerCount;
         char **papszTriggerResult, *pszErrMsg;
 
-        rc = sqlite3_get_table( hDB, pszSQL, &papszTriggerResult,
+        /* rc = */ sqlite3_get_table( hDB, pszSQL, &papszTriggerResult,
             &nRowTriggerCount, &nColTriggerCount, &pszErrMsg );
         if( nRowTriggerCount >= 1 )
         {
@@ -208,7 +207,7 @@ CPLErr OGRSQLiteTableLayer::Initialize( const char *pszTableName,
 
         sqlite3_free_table( papszTriggerResult );
     }
-	
+
     if( poSRS )
         poSRS->Reference();
 
@@ -609,46 +608,25 @@ int OGRSQLiteTableLayer::HasFastSpatialFilter(int iGeomCol)
 CPLString OGRSQLiteTableLayer::GetSpatialWhere(int iGeomCol,
                                                OGRGeometry* poFilterGeom)
 {
-    CPLString osSpatialWHERE;
-
     if( !poDS->IsSpatialiteDB() || poFeatureDefn == NULL ||
         iGeomCol < 0 || iGeomCol >= poFeatureDefn->GetGeomFieldCount() )
-        return osSpatialWHERE;
+        return "";
 
     if( poFilterGeom != NULL && CheckSpatialIndexTable() )
     {
-        OGREnvelope  sEnvelope;
-
-        CPLLocaleC  oLocaleEnforcer;
-
-        poFilterGeom->getEnvelope( &sEnvelope );
-
-        osSpatialWHERE.Printf("ROWID IN ( SELECT pkid FROM 'idx_%s_%s' WHERE "
-                        "xmax >= %.12f AND xmin <= %.12f AND ymax >= %.12f AND ymin <= %.12f)",
-                        pszEscapedTableName,
-                        OGRSQLiteEscape(poFeatureDefn->GetGeomFieldDefn(iGeomCol)->GetNameRef()).c_str(),
-                        sEnvelope.MinX - 1e-11, sEnvelope.MaxX + 1e-11,
-                        sEnvelope.MinY - 1e-11, sEnvelope.MaxY + 1e-11);
+        return FormatSpatialFilterFromRTree(poFilterGeom, "ROWID",
+            pszEscapedTableName,
+            OGRSQLiteEscape(poFeatureDefn->GetGeomFieldDefn(iGeomCol)->GetNameRef()).c_str());
     }
 
     if( poFilterGeom != NULL &&
         poDS->IsSpatialiteLoaded() && !bHasSpatialIndex )
     {
-        OGREnvelope  sEnvelope;
-
-        CPLLocaleC  oLocaleEnforcer;
-
-        poFilterGeom->getEnvelope( &sEnvelope );
-
-        /* A bit inefficient but still faster than OGR filtering */
-        osSpatialWHERE.Printf("MBRIntersects(\"%s\", BuildMBR(%.12f, %.12f, %.12f, %.12f, %d))",
-                       OGRSQLiteEscapeName(poFeatureDefn->GetGeomFieldDefn(iGeomCol)->GetNameRef()).c_str(),
-                       sEnvelope.MinX - 1e-11, sEnvelope.MinY - 1e-11,
-                       sEnvelope.MaxX + 1e-11, sEnvelope.MaxY + 1e-11,
-                       nSRSId);
+        return FormatSpatialFilterFromMBR(poFilterGeom,
+            OGRSQLiteEscapeName(poFeatureDefn->GetGeomFieldDefn(iGeomCol)->GetNameRef()).c_str());
     }
 
-    return osSpatialWHERE;
+    return "";
 }
 
 /************************************************************************/
@@ -765,10 +743,13 @@ int OGRSQLiteTableLayer::GetFeatureCount( int bForce )
 
         m_poFilterGeom->getEnvelope( &sEnvelope );
         pszSQL = CPLSPrintf("SELECT count(*) FROM 'idx_%s_%s' WHERE "
-                            "xmax >= %.12f AND xmin <= %.12f AND ymax >= %.12f AND ymin <= %.12f",
+                            "xmax >= %s AND xmin <= %s AND ymax >= %s AND ymin <= %s",
                             pszEscapedTableName, OGRSQLiteEscape(pszGeomCol).c_str(),
-                            sEnvelope.MinX - 1e-11, sEnvelope.MaxX + 1e-11,
-                            sEnvelope.MinY - 1e-11, sEnvelope.MaxY + 1e-11);
+                            // Insure that only Decimal.Points are used, never local settings such as Decimal.Comma.
+                            CPLString().FormatC(sEnvelope.MinX - 1e-11,"%.12f").c_str(),
+                            CPLString().FormatC(sEnvelope.MaxX + 1e-11,"%.12f").c_str(),
+                            CPLString().FormatC(sEnvelope.MinY - 1e-11,"%.12f").c_str(),
+                            CPLString().FormatC(sEnvelope.MaxY + 1e-11,"%.12f").c_str());
     }
     else
     {
@@ -925,9 +906,8 @@ CPLString OGRSQLiteTableLayer::FieldDefnToSQliteFieldDefn( OGRFieldDefn* poField
 /*                            CreateField()                             */
 /************************************************************************/
 
-OGRErr OGRSQLiteTableLayer::CreateField( OGRFieldDefn *poFieldIn, 
-                                         int bApproxOK )
-
+OGRErr OGRSQLiteTableLayer::CreateField( OGRFieldDefn *poFieldIn,
+                                         CPL_UNUSED int bApproxOK )
 {
     OGRFieldDefn        oField( poFieldIn );
 
@@ -1787,7 +1767,7 @@ OGRErr OGRSQLiteTableLayer::BindValues( OGRFeature *poFeature,
                     poFeature->GetFieldAsDateTime(iField, &nYear, &nMonth, &nDay,
                                                 &nHour, &nMinute, &nSecond, &nTZ);
                     char szBuffer[64];
-                    sprintf(szBuffer, "%04d-%02d-%02dT", nYear, nMonth, nDay);
+                    sprintf(szBuffer, "%04d-%02d-%02d", nYear, nMonth, nDay);
                     rc = sqlite3_bind_text(hStmt, nBindField++,
                                            szBuffer, -1, SQLITE_TRANSIENT);
                     break;
@@ -2582,11 +2562,14 @@ int OGRSQLiteTableLayer::SaveStatistics()
             osSQL.Printf("INSERT OR REPLACE INTO layer_statistics (raster_layer, "
                             "table_name, geometry_column, row_count, extent_min_x, "
                             "extent_min_y, extent_max_x, extent_max_y) VALUES ("
-                            "0, '%s', '%s', " CPL_FRMT_GIB ", %.18g, %.18g, %.18g, %.18g)",
+                            "0, '%s', '%s', " CPL_FRMT_GIB ", %s, %s, %s, %s)",
                             pszEscapedTableName, OGRSQLiteEscape(pszGeomCol).c_str(),
                             nFeatureCount,
-                            oCachedExtent.MinX, oCachedExtent.MinY,
-                            oCachedExtent.MaxX, oCachedExtent.MaxY);
+                            // Insure that only Decimal.Points are used, never local settings such as Decimal.Comma.
+                            CPLString().FormatC(oCachedExtent.MinX,"%.18g").c_str(),
+                            CPLString().FormatC(oCachedExtent.MinY,"%.18g").c_str(),
+                            CPLString().FormatC(oCachedExtent.MaxX,"%.18g").c_str(),
+                            CPLString().FormatC(oCachedExtent.MaxY,"%.18g").c_str());
         }
         else
         {

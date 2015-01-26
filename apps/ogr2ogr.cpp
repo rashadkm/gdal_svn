@@ -76,6 +76,10 @@ typedef struct
     TargetLayerInfo  *psInfo;
 } AssociatedLayers;
 
+static OGRLayer* GetLayerAndOverwriteIfNecessary(GDALDataset *poDstDS,
+                                                 const char* pszNewLayerName,
+                                                 int bOverwrite,
+                                                 int* pbErrorOccured);
 static TargetLayerInfo* SetupTargetLayer( GDALDataset *poSrcDS,
                                                 OGRLayer * poSrcLayer,
                                                 GDALDataset *poDstDS,
@@ -1449,7 +1453,8 @@ int main( int nArgc, char ** papszArgv )
         /* Restrict to those 2 drivers. For example it is known to break with */
         /* the PG driver due to the way it manages transactions... */
         if (poDS && !(EQUAL(poDriver->GetDescription(), "FileGDB") ||
-                      EQUAL(poDriver->GetDescription(), "SQLite")))
+                      EQUAL(poDriver->GetDescription(), "SQLite") ||
+                      EQUAL(poDriver->GetDescription(), "GPKG")))
         {
             poDS = (GDALDataset*) GDALOpenEx( pszDataSource,
                             GDAL_OF_VECTOR, NULL, papszOpenOptions, NULL );
@@ -1682,6 +1687,11 @@ int main( int nArgc, char ** papszArgv )
     if( pszSQLStatement != NULL )
     {
         OGRLayer *poResultSet;
+
+        /* Special case: if output=input, then we must likely destroy the */
+        /* old table before to avoid transaction issues. */
+        if( poDS == poODS && pszNewLayerName != NULL && bOverwrite )
+            GetLayerAndOverwriteIfNecessary(poODS, pszNewLayerName, bOverwrite, NULL);
 
         if( pszWHERE != NULL )
             fprintf( stderr,  "-where clause ignored in combination with -sql.\n" );
@@ -2468,27 +2478,84 @@ static int ForceCoordDimension(int eGType, int nCoordDim)
 }
 
 /************************************************************************/
+/*                   GetLayerAndOverwriteIfNecessary()                  */
+/************************************************************************/
+
+static OGRLayer* GetLayerAndOverwriteIfNecessary(GDALDataset *poDstDS,
+                                                 const char* pszNewLayerName,
+                                                 int bOverwrite,
+                                                 int* pbErrorOccured)
+{
+    if( pbErrorOccured )
+        *pbErrorOccured = FALSE;
+
+    /* GetLayerByName() can instanciate layers that would have been */
+    /* 'hidden' otherwise, for example, non-spatial tables in a */
+    /* Postgis-enabled database, so this apparently useless command is */
+    /* not useless... (#4012) */
+    CPLPushErrorHandler(CPLQuietErrorHandler);
+    OGRLayer* poDstLayer = poDstDS->GetLayerByName(pszNewLayerName);
+    CPLPopErrorHandler();
+    CPLErrorReset();
+
+    int iLayer = -1;
+    if (poDstLayer != NULL)
+    {
+        int nLayerCount = poDstDS->GetLayerCount();
+        for( iLayer = 0; iLayer < nLayerCount; iLayer++ )
+        {
+            OGRLayer        *poLayer = poDstDS->GetLayer(iLayer);
+            if (poLayer == poDstLayer)
+                break;
+        }
+
+        if (iLayer == nLayerCount)
+            /* shouldn't happen with an ideal driver */
+            poDstLayer = NULL;
+    }
+
+/* -------------------------------------------------------------------- */
+/*      If the user requested overwrite, and we have the layer in       */
+/*      question we need to delete it now so it will get recreated      */
+/*      (overwritten).                                                  */
+/* -------------------------------------------------------------------- */
+    if( poDstLayer != NULL && bOverwrite )
+    {
+        if( poDstDS->DeleteLayer( iLayer ) != OGRERR_NONE )
+        {
+            fprintf( stderr,
+                     "DeleteLayer() failed when overwrite requested.\n" );
+            if( pbErrorOccured )
+                *pbErrorOccured = TRUE;
+        }
+        poDstLayer = NULL;
+    }
+
+    return poDstLayer;
+}
+
+/************************************************************************/
 /*                         SetupTargetLayer()                           */
 /************************************************************************/
 
-static TargetLayerInfo* SetupTargetLayer( GDALDataset *poSrcDS,
-                                                OGRLayer * poSrcLayer,
-                                                GDALDataset *poDstDS,
-                                                char **papszLCO,
-                                                const char *pszNewLayerName,
-                                                OGRSpatialReference *poOutputSRS,
-                                                int bNullifyOutputSRS,
-                                                char **papszSelFields,
-                                                int bAppend, int bAddMissingFields, int eGType,
-                                                int bPromoteToMulti,
-                                                int nCoordDim, int bOverwrite,
-                                                char** papszFieldTypesToString,
-                                                int bUnsetFieldWidth,
-                                                int bExplodeCollections,
-                                                const char* pszZField,
-                                                char **papszFieldMap,
-                                                const char* pszWHERE,
-                                                int bExactFieldNameMatch )
+static TargetLayerInfo* SetupTargetLayer( CPL_UNUSED GDALDataset *poSrcDS,
+                                          OGRLayer * poSrcLayer,
+                                          GDALDataset *poDstDS,
+                                          char **papszLCO,
+                                          const char *pszNewLayerName,
+                                          OGRSpatialReference *poOutputSRSIn,
+                                          int bNullifyOutputSRS,
+                                          char **papszSelFields,
+                                          int bAppend, int bAddMissingFields, int eGType,
+                                          int bPromoteToMulti,
+                                          int nCoordDim, int bOverwrite,
+                                          char** papszFieldTypesToString,
+                                          int bUnsetFieldWidth,
+                                          int bExplodeCollections,
+                                          const char* pszZField,
+                                          char **papszFieldMap,
+                                          const char* pszWHERE,
+                                          int bExactFieldNameMatch )
 {
     OGRLayer    *poDstLayer;
     OGRFeatureDefn *poSrcFDefn;
@@ -2546,6 +2613,7 @@ static TargetLayerInfo* SetupTargetLayer( GDALDataset *poSrcDS,
         }
     }
 
+    OGRSpatialReference* poOutputSRS = poOutputSRSIn;
     if( poOutputSRS == NULL && !bNullifyOutputSRS )
     {
         if( nSrcGeomFieldCount == 1 || anRequestedGeomFields.size() == 0 )
@@ -2562,46 +2630,13 @@ static TargetLayerInfo* SetupTargetLayer( GDALDataset *poSrcDS,
 /*      Find the layer.                                                 */
 /* -------------------------------------------------------------------- */
 
-    /* GetLayerByName() can instanciate layers that would have been */
-    /* 'hidden' otherwise, for example, non-spatial tables in a */
-    /* Postgis-enabled database, so this apparently useless command is */
-    /* not useless... (#4012) */
-    CPLPushErrorHandler(CPLQuietErrorHandler);
-    poDstLayer = poDstDS->GetLayerByName(pszNewLayerName);
-    CPLPopErrorHandler();
-    CPLErrorReset();
-
-    int iLayer = -1;
-    if (poDstLayer != NULL)
-    {
-        int nLayerCount = poDstDS->GetLayerCount();
-        for( iLayer = 0; iLayer < nLayerCount; iLayer++ )
-        {
-            OGRLayer        *poLayer = poDstDS->GetLayer(iLayer);
-            if (poLayer == poDstLayer)
-                break;
-        }
-
-        if (iLayer == nLayerCount)
-            /* shouldn't happen with an ideal driver */
-            poDstLayer = NULL;
-    }
-
-/* -------------------------------------------------------------------- */
-/*      If the user requested overwrite, and we have the layer in       */
-/*      question we need to delete it now so it will get recreated      */
-/*      (overwritten).                                                  */
-/* -------------------------------------------------------------------- */
-    if( poDstLayer != NULL && bOverwrite )
-    {
-        if( poDstDS->DeleteLayer( iLayer ) != OGRERR_NONE )
-        {
-            fprintf( stderr,
-                     "DeleteLayer() failed when overwrite requested.\n" );
-            return NULL;
-        }
-        poDstLayer = NULL;
-    }
+    int bErrorOccured;
+    poDstLayer = GetLayerAndOverwriteIfNecessary(poDstDS,
+                                                 pszNewLayerName,
+                                                 bOverwrite,
+                                                 &bErrorOccured);
+    if( bErrorOccured )
+        return NULL;
 
 /* -------------------------------------------------------------------- */
 /*      If the layer does not exist, then create it.                    */
@@ -2707,8 +2742,8 @@ static TargetLayerInfo* SetupTargetLayer( GDALDataset *poSrcDS,
                 int iSrcGeomField = anRequestedGeomFields[i];
                 OGRGeomFieldDefn oGFldDefn
                     (poSrcFDefn->GetGeomFieldDefn(iSrcGeomField));
-                if( poOutputSRS != NULL )
-                    oGFldDefn.SetSpatialRef(poOutputSRS);
+                if( poOutputSRSIn != NULL )
+                    oGFldDefn.SetSpatialRef(poOutputSRSIn);
                 if( bForceGType )
                     oGFldDefn.SetType((OGRwkbGeometryType) eGType);
                 else
@@ -3243,7 +3278,7 @@ static int SetupCT( TargetLayerInfo* psInfo,
 static int TranslateLayer( TargetLayerInfo* psInfo,
                            GDALDataset *poSrcDS,
                            OGRLayer * poSrcLayer,
-                           GDALDataset *poDstDS,
+                           CPL_UNUSED GDALDataset *poDstDS,
                            int bTransform,
                            int bWrapDateline,
                            const char* pszDateLineOffset,
@@ -3264,7 +3299,6 @@ static int TranslateLayer( TargetLayerInfo* psInfo,
                            GIntBig* pnReadFeatureCount,
                            GDALProgressFunc pfnProgress,
                            void *pProgressArg )
-
 {
     OGRLayer    *poDstLayer;
     int         bForceToPolygon = FALSE;
@@ -3624,4 +3658,3 @@ end_loop:
 
     return TRUE;
 }
-

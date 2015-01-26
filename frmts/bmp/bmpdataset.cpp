@@ -164,7 +164,9 @@ typedef struct
 
 // Info header size in bytes:
 const unsigned int  BIH_WIN4SIZE = 40; // for BMPT_WIN4
+#if 0  /* Unused */
 const unsigned int  BIH_WIN5SIZE = 57; // for BMPT_WIN5
+#endif
 const unsigned int  BIH_OS21SIZE = 12; // for BMPT_OS21
 const unsigned int  BIH_OS22SIZE = 64; // for BMPT_OS22
 
@@ -319,7 +321,8 @@ BMPRasterBand::~BMPRasterBand()
 /*                             IReadBlock()                             */
 /************************************************************************/
 
-CPLErr BMPRasterBand::IReadBlock( int nBlockXOff, int nBlockYOff,
+CPLErr BMPRasterBand::IReadBlock( CPL_UNUSED int nBlockXOff,
+                                  int nBlockYOff,
                                   void * pImage )
 {
     BMPDataset  *poGDS = (BMPDataset *) poDS;
@@ -858,8 +861,9 @@ BMPComprRasterBand::~BMPComprRasterBand()
 /*                             IReadBlock()                             */
 /************************************************************************/
 
-CPLErr BMPComprRasterBand::
-    IReadBlock( int nBlockXOff, int nBlockYOff, void * pImage )
+CPLErr BMPComprRasterBand::IReadBlock( CPL_UNUSED int nBlockXOff,
+                                       int nBlockYOff,
+                                       void * pImage )
 {
     memcpy( pImage, pabyUncomprBuf +
             (poDS->GetRasterYSize() - nBlockYOff - 1) * poDS->GetRasterXSize(),
@@ -1539,4 +1543,3 @@ void GDALRegister_BMP()
         GetGDALDriverManager()->RegisterDriver( poDriver );
     }
 }
-

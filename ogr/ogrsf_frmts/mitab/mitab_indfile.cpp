@@ -10,6 +10,7 @@
  *
  **********************************************************************
  * Copyright (c) 1999-2001, Daniel Morissette
+ * Copyright (c) 2014, Even Rouault <even.rouault at spatialys.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -101,6 +102,7 @@ TABINDFile::TABINDFile()
     m_numIndexes = 0;
     m_papoIndexRootNodes = NULL;
     m_papbyKeyBuffers = NULL;
+    m_oBlockManager.SetName("IND");
 }
 
 /**********************************************************************
@@ -185,7 +187,7 @@ int TABINDFile::Open(const char *pszFname, const char *pszAccess,
     /*-----------------------------------------------------------------
      * Open file
      *----------------------------------------------------------------*/
-    m_fp = VSIFOpen(m_pszFname, pszAccess);
+    m_fp = VSIFOpenL(m_pszFname, pszAccess);
 
     if (m_fp == NULL)
     {
@@ -282,7 +284,7 @@ int TABINDFile::Close()
     /*-----------------------------------------------------------------
      * Close file
      *----------------------------------------------------------------*/
-    VSIFClose(m_fp);
+    VSIFCloseL(m_fp);
     m_fp = NULL;
 
     CPLFree(m_pszFname);
@@ -309,10 +311,10 @@ int TABINDFile::ReadHeader()
     /*-----------------------------------------------------------------
      * In ReadWrite mode, we need to init BlockManager with file size
      *----------------------------------------------------------------*/
-    VSIStatBuf  sStatBuf;
-    if (m_eAccessMode == TABReadWrite && VSIStat(m_pszFname, &sStatBuf) != -1)
+    VSIStatBufL  sStatBuf;
+    if (m_eAccessMode == TABReadWrite && VSIStatL(m_pszFname, &sStatBuf) != -1)
     {
-        m_oBlockManager.SetLastPtr(((sStatBuf.st_size-1)/512)*512);
+        m_oBlockManager.SetLastPtr((int)(((sStatBuf.st_size-1)/512)*512));
     }
 
     /*-----------------------------------------------------------------
@@ -948,7 +950,7 @@ TABINDNode::~TABINDNode()
  *
  * Returns 0 on success, -1 on error.
  **********************************************************************/
-int TABINDNode::InitNode(FILE *fp, int nBlockPtr, 
+int TABINDNode::InitNode(VSILFILE *fp, int nBlockPtr, 
                          int nKeyLength, int nSubTreeDepth, 
                          GBool bUnique,
                          TABBinBlockManager *poBlockMgr /*=NULL*/,

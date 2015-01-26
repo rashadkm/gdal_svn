@@ -29,8 +29,12 @@
 
 /* This file is to be used with openjpeg 2.0 */
 
+#if defined(OPENJPEG_VERSION) && OPENJPEG_VERSION >= 20100
+#include <openjpeg-2.1/openjpeg.h>
+#else
 #include <stdio.h> /* openjpeg.h needs FILE* */
 #include <openjpeg-2.0/openjpeg.h>
+#endif
 #include <vector>
 
 #include "gdaljp2abstractdataset.h"
@@ -45,7 +49,7 @@ CPL_CVSID("$Id$");
 /*                  JP2OpenJPEGDataset_ErrorCallback()                  */
 /************************************************************************/
 
-static void JP2OpenJPEGDataset_ErrorCallback(const char *pszMsg, void *unused)
+static void JP2OpenJPEGDataset_ErrorCallback(const char *pszMsg, CPL_UNUSED void *unused)
 {
     CPLError(CE_Failure, CPLE_AppDefined, "%s", pszMsg);
 }
@@ -54,7 +58,7 @@ static void JP2OpenJPEGDataset_ErrorCallback(const char *pszMsg, void *unused)
 /*               JP2OpenJPEGDataset_WarningCallback()                   */
 /************************************************************************/
 
-static void JP2OpenJPEGDataset_WarningCallback(const char *pszMsg, void *unused)
+static void JP2OpenJPEGDataset_WarningCallback(const char *pszMsg, CPL_UNUSED void *unused)
 {
     if( strcmp(pszMsg, "Empty SOT marker detected: Psot=12.\n") == 0 )
     {
@@ -71,7 +75,7 @@ static void JP2OpenJPEGDataset_WarningCallback(const char *pszMsg, void *unused)
 /*                 JP2OpenJPEGDataset_InfoCallback()                    */
 /************************************************************************/
 
-static void JP2OpenJPEGDataset_InfoCallback(const char *pszMsg, void *unused)
+static void JP2OpenJPEGDataset_InfoCallback(const char *pszMsg, CPL_UNUSED void *unused)
 {
     char* pszMsgTmp = CPLStrdup(pszMsg);
     int nLen = (int)strlen(pszMsgTmp);
@@ -631,7 +635,11 @@ CPLErr JP2OpenJPEGDataset::ReadBlock( int nBand, VSILFILE* fp,
     opj_stream_set_read_function(pStream, JP2OpenJPEGDataset_Read);
     opj_stream_set_seek_function(pStream, JP2OpenJPEGDataset_Seek);
     opj_stream_set_skip_function(pStream, JP2OpenJPEGDataset_Skip);
+#if defined(OPENJPEG_VERSION) && OPENJPEG_VERSION >= 20100
+    opj_stream_set_user_data(pStream, fp, NULL);
+#else
     opj_stream_set_user_data(pStream, fp);
+#endif
 
     if(!opj_read_header(pStream,pCodec,&psImage))
     {
@@ -972,7 +980,11 @@ GDALDataset *JP2OpenJPEGDataset::Open( GDALOpenInfo * poOpenInfo )
     opj_stream_set_read_function(pStream, JP2OpenJPEGDataset_Read);
     opj_stream_set_seek_function(pStream, JP2OpenJPEGDataset_Seek);
     opj_stream_set_skip_function(pStream, JP2OpenJPEGDataset_Skip);
+#if defined(OPENJPEG_VERSION) && OPENJPEG_VERSION >= 20100
+    opj_stream_set_user_data(pStream, fp, NULL);
+#else
     opj_stream_set_user_data(pStream, fp);
+#endif
 
     opj_image_t * psImage = NULL;
     OPJ_INT32  nX0,nY0;
@@ -994,6 +1006,7 @@ GDALDataset *JP2OpenJPEGDataset::Open( GDALOpenInfo * poOpenInfo )
     nTileH = pCodeStreamInfo->tdy;
     nTilesX = pCodeStreamInfo->tw;
     nTilesY = pCodeStreamInfo->th;
+    int mct = pCodeStreamInfo->m_default_tile_info.mct;
     int numResolutions = pCodeStreamInfo->m_default_tile_info.tccp_info[0].numresolutions;
     opj_destroy_cstr_info(&pCodeStreamInfo);
 
@@ -1012,6 +1025,7 @@ GDALDataset *JP2OpenJPEGDataset::Open( GDALOpenInfo * poOpenInfo )
     CPLDebug("OPENJPEG", "nY0 = %d", nY0);
     CPLDebug("OPENJPEG", "nTileW = %d", nTileW);
     CPLDebug("OPENJPEG", "nTileH = %d", nTileH);
+    CPLDebug("OPENJPEG", "mct = %d", mct);
     CPLDebug("OPENJPEG", "psImage->x0 = %d", psImage->x0);
     CPLDebug("OPENJPEG", "psImage->y0 = %d", psImage->y0);
     CPLDebug("OPENJPEG", "psImage->x1 = %d", psImage->x1);
@@ -1343,7 +1357,7 @@ GDALDataset * JP2OpenJPEGDataset::CreateCopy( const char * pszFilename,
     int  nXSize = poSrcDS->GetRasterXSize();
     int  nYSize = poSrcDS->GetRasterYSize();
 
-    if( nBands != 1 && nBands != 3 )
+    if( nBands != 1 && nBands != 3 /* && nBands != 4 */ )
     {
         CPLError( CE_Failure, CPLE_NotSupported,
                   "Unable to export files with %d bands.", nBands );
@@ -1468,14 +1482,27 @@ GDALDataset * JP2OpenJPEGDataset::CreateCopy( const char * pszFilename,
     
     int bSOP = CSLTestBoolean(CSLFetchNameValueDef(papszOptions, "SOP", "FALSE"));
     int bEPH = CSLTestBoolean(CSLFetchNameValueDef(papszOptions, "EPH", "FALSE"));
-    
-    int bResample = nBands == 3 && eDataType == GDT_Byte &&
-            CSLTestBoolean(CSLFetchNameValueDef(papszOptions, "YCBCR420", "FALSE"));
+
+    int bResample = (nBands == 3 && eDataType == GDT_Byte &&
+            CSLTestBoolean(CSLFetchNameValueDef(papszOptions, "YCBCR420", "FALSE")));
     if (bResample && !((nXSize % 2) == 0 && (nYSize % 2) == 0 && (nBlockXSize % 2) == 0 && (nBlockYSize % 2) == 0))
     {
         CPLError(CE_Warning, CPLE_NotSupported,
                  "YCBCR420 unsupported when image size and/or tile size are not multiple of 2");
         bResample = FALSE;
+    }
+
+    const char* pszYCC = CSLFetchNameValue(papszOptions, "YCC");
+    int bYCC = (nBands == 3 && eDataType == GDT_Byte &&
+            CSLTestBoolean(CSLFetchNameValueDef(papszOptions, "YCC", "TRUE")));
+    if( bResample && bYCC )
+    {
+        if( pszYCC != NULL )
+        {
+            CPLError(CE_Warning, CPLE_NotSupported,
+                    "YCC unsupported when YCbCr requesting");
+        }
+        bYCC = FALSE;
     }
 
 /* -------------------------------------------------------------------- */
@@ -1499,6 +1526,7 @@ GDALDataset * JP2OpenJPEGDataset::CreateCopy( const char * pszFilename,
     parameters.irreversible = bIsIrreversible;
     parameters.numresolution = nNumResolutions;
     parameters.prog_order = eProgOrder;
+    parameters.tcp_mct = bYCC;
 
     opj_image_cmptparm_t* pasBandParams =
             (opj_image_cmptparm_t*)CPLMalloc(nBands * sizeof(opj_image_cmptparm_t));
@@ -1538,7 +1566,7 @@ GDALDataset * JP2OpenJPEGDataset::CreateCopy( const char * pszFilename,
     opj_set_warning_handler(pCodec, JP2OpenJPEGDataset_WarningCallback,NULL);
     opj_set_error_handler(pCodec, JP2OpenJPEGDataset_ErrorCallback,NULL);
 
-    OPJ_COLOR_SPACE eColorSpace = (bResample) ? OPJ_CLRSPC_SYCC : (nBands == 3) ? OPJ_CLRSPC_SRGB : OPJ_CLRSPC_GRAY;
+    OPJ_COLOR_SPACE eColorSpace = (bResample) ? OPJ_CLRSPC_SYCC : (nBands == 3 || nBands == 4) ? OPJ_CLRSPC_SRGB : OPJ_CLRSPC_GRAY;
 
     opj_image_t* psImage = opj_image_tile_create(nBands,pasBandParams,
                                                  eColorSpace);
@@ -1589,7 +1617,11 @@ GDALDataset * JP2OpenJPEGDataset::CreateCopy( const char * pszFilename,
     opj_stream_set_write_function(pStream, JP2OpenJPEGDataset_Write);
     opj_stream_set_seek_function(pStream, JP2OpenJPEGDataset_Seek);
     opj_stream_set_skip_function(pStream, JP2OpenJPEGDataset_Skip);
+#if defined(OPENJPEG_VERSION) && OPENJPEG_VERSION >= 20100
+    opj_stream_set_user_data(pStream, fp, NULL);
+#else
     opj_stream_set_user_data(pStream, fp);
+#endif
 
     if (!opj_start_compress(pCodec,psImage,pStream))
     {
@@ -1995,6 +2027,7 @@ void GDALRegister_JP2OpenJPEG()
 "   <Option name='SOP' type='boolean' description='True to insert SOP markers' default='false'/>"
 "   <Option name='EPH' type='boolean' description='True to insert EPH markers' default='false'/>"
 "   <Option name='YCBCR420' type='boolean' description='if RGB must be resampled to YCbCr 4:2:0' default='false'/>"
+"   <Option name='YCC' type='boolean' description='if RGB must be transformed to YCC color space' default='true'/>"
 "</CreationOptionList>"  );
 
         poDriver->SetMetadataItem( GDAL_DCAP_VIRTUALIO, "YES" );

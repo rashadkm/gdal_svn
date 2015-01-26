@@ -91,6 +91,9 @@ produce better compression than lossy compression. <P>
 <li> <b>BLOCKYSIZE=n</b>: Set the tile height to use.  Defaults to image height.
 <p>
 
+<li> <b>FLUSH=TRUE/FALSE</b>: Enable/Disable incremental flushing when writing files.  Required to be FALSE for RLPC and LRPC Corder.  May use a lot of memory when FALSE while writing large images.  Defaults to TRUE.
+<p>
+
 <li> <b>GMLJP2=YES/NO</b>: Indicates whether a GML box conforming to the OGC GML in JPEG2000 specification should be included in the file.  Defaults to YES.<p>
 
 <li> <b>GeoJP2=YES/NO</b>: Indicates whether a UUID/GeoTIFF box conforming to the GeoJP2 (GeoTIFF in JPEG2000) specification should be included in the file.  Defaults to YES.<p>
@@ -127,12 +130,14 @@ See Also:<p>
 
 <ul>
 
-<li> Implemented as <tt>gdal/frmts/jp2kak/jp2kakdataset.cpp</tt>.<p>
+<li> Implemented as <tt>gdal/frmts/jp2kak/jp2kakdataset.cpp</tt>. </li>
+
+<li> If you're using a Kakadu release before v7.5, configure &amp; compile GDAL with eg. <code>CXXFLAGS="-DKDU_MAJOR_VERSION=7 -DKDU_MINOR_VERSION=3 -DKDU_PATCH_VERSION=2"</code> for Kakadu version 7.3.2.</li>
 
 <li> <a href="http://www.remotesensing.org/jpeg2000/">JPEG2000 for Geospatial
-Applications</a> page, includes GeoJP2(tm) discussion.<p>
+Applications</a> page, includes GeoJP2(tm) discussion.</li>
 
-<li> Alternate <a href="frmt_jpeg2000.html">JPEG200 driver</a>.<p>
+<li> Alternate <a href="frmt_jpeg2000.html">JPEG2000 driver</a>.</li>
 
 </ul>
 

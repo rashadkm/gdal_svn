@@ -3040,26 +3040,26 @@ GDALRasterAttributeTable *HFARasterBand::GetDefaultRAT()
 {		
     if( poDefaultRAT == NULL )
         poDefaultRAT = new HFARasterAttributeTable(this, "Descriptor_Table" );
- 
+
     return poDefaultRAT;
 }
 
 /************************************************************************/
 /*                            WriteNamedRAT()                            */
 /************************************************************************/
- 
-CPLErr HFARasterBand::WriteNamedRAT( const char *pszName, const GDALRasterAttributeTable *poRAT )
+
+CPLErr HFARasterBand::WriteNamedRAT( CPL_UNUSED const char *pszName,
+                                     CPL_UNUSED const GDALRasterAttributeTable *poRAT )
 {
 /* -------------------------------------------------------------------- */
 /*      Find the requested table.                                       */
 /* -------------------------------------------------------------------- */
     HFAEntry * poDT = hHFA->papoBand[nBand-1]->poNode->GetNamedChild( "Descriptor_Table" );
     if( poDT == NULL || !EQUAL(poDT->GetType(),"Edsc_Table") )
-        poDT = new HFAEntry( hHFA->papoBand[nBand-1]->psInfo, 
+        poDT = new HFAEntry( hHFA->papoBand[nBand-1]->psInfo,
                              "Descriptor_Table", "Edsc_Table",
                              hHFA->papoBand[nBand-1]->poNode );
-   
-  
+
     int nRowCount = poRAT->GetRowCount();
 
     poDT->SetIntField( "numrows", nRowCount );
@@ -4613,11 +4613,10 @@ HFAPCSStructToWKT( const Eprj_Datum *psDatum,
         break;
 
       case EPRJ_HOTINE_OBLIQUE_MERCATOR_AZIMUTH_CENTER:
-        if( psPro->proParams[12] > 0.0 )
-            oSRS.SetHOMAC( psPro->proParams[5]*R2D, psPro->proParams[4]*R2D,
-                           psPro->proParams[3]*R2D, 0.0,
-                           psPro->proParams[2],
-                           psPro->proParams[6], psPro->proParams[7] );
+        oSRS.SetHOMAC( psPro->proParams[5]*R2D, psPro->proParams[4]*R2D,
+                        psPro->proParams[3]*R2D, 0.0,
+                        psPro->proParams[2],
+                        psPro->proParams[6], psPro->proParams[7] );
         break;
 
       case EPRJ_ROBINSON:
@@ -5816,9 +5815,9 @@ CPLErr HFADataset::CopyFiles( const char *pszNewName, const char *pszOldName )
 
 GDALDataset *
 HFADataset::CreateCopy( const char * pszFilename, GDALDataset *poSrcDS,
-                        int bStrict, char ** papszOptions,
+                        CPL_UNUSED int bStrict,
+                        char ** papszOptions,
                         GDALProgressFunc pfnProgress, void * pProgressData )
-
 {
     HFADataset	*poDS;
     GDALDataType eType = GDT_Byte;
@@ -6105,4 +6104,3 @@ void GDALRegister_HFA()
         GetGDALDriverManager()->RegisterDriver( poDriver );
     }
 }
-

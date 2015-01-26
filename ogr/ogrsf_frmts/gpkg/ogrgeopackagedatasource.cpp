@@ -428,18 +428,22 @@ int OGRGeoPackageDataSource::Open(const char * pszFilename, int bUpdateIn )
         
         SQLResultFree(&oResult);
     }
-        
+
     /* Load layer definitions for all tables in gpkg_contents & gpkg_geometry_columns */
     /* and non-spatial tables as well */
     SQLResult oResult;
-    std::string osSQL = 
+    std::string osSQL =
         "SELECT c.table_name, c.identifier, 1 as is_spatial, c.min_x, c.min_y, c.max_x, c.max_y "
-        "FROM gpkg_geometry_columns g JOIN gpkg_contents c ON (g.table_name = c.table_name)"
-        "WHERE c.data_type = 'features' "
-        "UNION ALL "
-        "SELECT name, name AS identifier, 0 as is_spatial, 0 AS xmin, 0 AS ymin, 0 AS xmax, 0 AS ymax FROM sqlite_master "
-        "WHERE type = 'table' AND name NOT LIKE 'gpkg%' AND name NOT LIKE 'sqlite_%' "
-        "AND name NOT LIKE 'rtree_%' AND NAME NOT IN (SELECT table_name FROM gpkg_contents)";
+        "  FROM gpkg_geometry_columns g JOIN gpkg_contents c ON (g.table_name = c.table_name)"
+        "  WHERE c.data_type = 'features' ";
+
+    if (HasGDALAspatialExtension()) {
+        osSQL +=
+            "UNION ALL "
+            "SELECT table_name, identifier, 0 as is_spatial, 0 AS xmin, 0 AS ymin, 0 AS xmax, 0 AS ymax "
+            "  FROM gpkg_contents"
+            "  WHERE data_type = 'aspatial' ";
+    }
 
     err = SQLQuery(hDB, osSQL.c_str(), &oResult);
     if  ( err != OGRERR_NONE )
@@ -481,7 +485,8 @@ int OGRGeoPackageDataSource::Open(const char * pszFilename, int bUpdateIn )
 /*                                Create()                              */
 /************************************************************************/
 
-int OGRGeoPackageDataSource::Create( const char * pszFilename, char **papszOptions )
+int OGRGeoPackageDataSource::Create( const char * pszFilename,
+                                     CPL_UNUSED char **papszOptions )
 {
     CPLString osCommand;
     const char *pszSpatialRefSysRecord;
@@ -740,7 +745,9 @@ OGRLayer* OGRGeoPackageDataSource::ICreateLayer( const char * pszLayerName,
     int nSRSId = UNDEFINED_SRID;
     if( poSpatialRef != NULL )
         nSRSId = GetSrsId( poSpatialRef );
-        
+
+    int bIsSpatial = (eGType != wkbNone);
+
     /* Requirement 25: The geometry_type_name value in a gpkg_geometry_columns */
     /* row SHALL be one of the uppercase geometry type names specified in */
     /* Geometry Types (Normative). */
@@ -748,7 +755,7 @@ OGRLayer* OGRGeoPackageDataSource::ICreateLayer( const char * pszLayerName,
     
     /* Create the table! */
     char *pszSQL = NULL;
-    if ( eGType != wkbNone )
+    if ( bIsSpatial )
     {
         pszSQL = sqlite3_mprintf(
             "CREATE TABLE \"%s\" ( "
@@ -770,7 +777,7 @@ OGRLayer* OGRGeoPackageDataSource::ICreateLayer( const char * pszLayerName,
         return NULL;
 
     /* Only spatial tables need to be registered in the metadata (hmmm) */
-    if ( eGType != wkbNone )
+    if ( bIsSpatial )
     {
         /* Requirement 27: The z value in a gpkg_geometry_columns table row */
         /* SHALL be one of 0 (none), 1 (mandatory), or 2 (optional) */
@@ -789,21 +796,35 @@ OGRLayer* OGRGeoPackageDataSource::ICreateLayer( const char * pszLayerName,
         sqlite3_free(pszSQL);
         if ( err != OGRERR_NONE )
             return NULL;
+    }
 
-        /* Update gpkg_contents with the table info */
-        pszSQL = sqlite3_mprintf(
-            "INSERT INTO gpkg_contents "
-            "(table_name,data_type,identifier,last_change,srs_id)"
-            " VALUES "
-            "('%q','features','%q',strftime('%%Y-%%m-%%dT%%H:%%M:%%fZ',CURRENT_TIMESTAMP),%d)",
-            pszLayerName, pszLayerName, nSRSId);
-    
-        err = SQLCommand(hDB, pszSQL);
-        sqlite3_free(pszSQL);
+    /* Update gpkg_contents with the table info */
+    char *pszSRSId = NULL;
+    if ( !bIsSpatial )
+    {
+        err = CreateGDALAspatialExtension();
         if ( err != OGRERR_NONE )
             return NULL;
-
     }
+    else
+    {
+        pszSRSId = sqlite3_mprintf("%d", nSRSId);
+    }
+
+    pszSQL = sqlite3_mprintf(
+        "INSERT INTO gpkg_contents "
+        "(table_name,data_type,identifier,last_change,srs_id)"
+        " VALUES "
+        "('%q','%q','%q',strftime('%%Y-%%m-%%dT%%H:%%M:%%fZ',CURRENT_TIMESTAMP),%Q)",
+        pszLayerName, (bIsSpatial ? "features": "aspatial"), pszLayerName, pszSRSId);
+
+    err = SQLCommand(hDB, pszSQL);
+    sqlite3_free(pszSQL);
+    if (pszSRSId) {
+        sqlite3_free(pszSRSId);
+    }
+    if ( err != OGRERR_NONE )
+        return NULL;
 
     /* The database is now all set up, so create a blank layer and read in the */
     /* info from the database. */
@@ -919,6 +940,10 @@ OGRLayer * OGRGeoPackageDataSource::ExecuteSQL( const char *pszSQLCommand,
         return OGRDataSource::ExecuteSQL( pszSQLCommand, 
                                           poSpatialFilter, 
                                           pszDialect );
+    else if( pszDialect != NULL && EQUAL(pszDialect,"INDIRECT_SQLITE") )
+        return OGRDataSource::ExecuteSQL( pszSQLCommand, 
+                                          poSpatialFilter, 
+                                          "SQLITE" );
 
 /* -------------------------------------------------------------------- */
 /*      Prepare statement.                                              */
@@ -1109,6 +1134,43 @@ int OGRGeoPackageDataSource::HasExtensionsTable()
 }
 
 /************************************************************************/
+/*                         HasGDALAspatialExtension()                       */
+/************************************************************************/
+
+int OGRGeoPackageDataSource::HasGDALAspatialExtension()
+{
+    if (!HasExtensionsTable())
+        return 0;
+
+    SQLResult oResultTable;
+    OGRErr err = SQLQuery(hDB,
+        "SELECT * FROM gpkg_extensions "
+        "WHERE extension_name = 'gdal_aspatial' "
+        "AND table_name IS NULL "
+        "AND column_name IS NULL", &oResultTable);
+    int bHasExtension = ( err == OGRERR_NONE && oResultTable.nRowCount == 1 );
+    SQLResultFree(&oResultTable);
+    return bHasExtension;
+}
+
+/************************************************************************/
+/*                  CreateGDALAspatialExtension()                       */
+/************************************************************************/
+
+OGRErr OGRGeoPackageDataSource::CreateGDALAspatialExtension()
+{
+    CreateExtensionsTableIfNecessary();
+
+    const char* pszCreateAspatialExtension =
+        "INSERT OR REPLACE INTO gpkg_extensions "
+        "(table_name, column_name, extension_name, definition, scope) "
+        "VALUES "
+        "(NULL, NULL, 'gdal_aspatial', 'http://gdal.org/geopackage_aspatial.html', 'read-write')";
+
+    return SQLCommand(hDB, pszCreateAspatialExtension);
+}
+
+/************************************************************************/
 /*                  CreateExtensionsTableIfNecessary()                  */
 /************************************************************************/
 
@@ -1130,7 +1192,7 @@ OGRErr OGRGeoPackageDataSource::CreateExtensionsTableIfNecessary()
         "definition TEXT NOT NULL,"
         "scope TEXT NOT NULL,"
         "CONSTRAINT ge_tce UNIQUE (table_name, column_name, extension_name)"
-        ")";  
+        ")";
 
     return SQLCommand(hDB, pszCreateGpkgExtensions);
 }
@@ -1140,7 +1202,8 @@ OGRErr OGRGeoPackageDataSource::CreateExtensionsTableIfNecessary()
 /************************************************************************/
 
 static int OGRGeoPackageGetHeader(sqlite3_context* pContext,
-                                  int argc, sqlite3_value** argv,
+                                  CPL_UNUSED int argc,
+                                  sqlite3_value** argv,
                                   GPkgHeader* psHeader,
                                   int bNeedExtent)
 {
@@ -1281,7 +1344,8 @@ void OGRGeoPackageSTGeometryType(sqlite3_context* pContext,
 
 static
 void OGRGeoPackageGPKGIsAssignable(sqlite3_context* pContext,
-                        int argc, sqlite3_value** argv)
+                                   CPL_UNUSED int argc,
+                                   sqlite3_value** argv)
 {
     if( sqlite3_value_type (argv[0]) != SQLITE_TEXT ||
         sqlite3_value_type (argv[1]) != SQLITE_TEXT )
@@ -1327,7 +1391,8 @@ void OGRGeoPackageSTSRID(sqlite3_context* pContext,
 
 static
 void OGRGeoPackageCreateSpatialIndex(sqlite3_context* pContext,
-                        int argc, sqlite3_value** argv)
+                                     CPL_UNUSED int argc,
+                                     sqlite3_value** argv)
 {
     if( sqlite3_value_type (argv[0]) != SQLITE_TEXT ||
         sqlite3_value_type (argv[1]) != SQLITE_TEXT )
@@ -1363,7 +1428,8 @@ void OGRGeoPackageCreateSpatialIndex(sqlite3_context* pContext,
 
 static
 void OGRGeoPackageDisableSpatialIndex(sqlite3_context* pContext,
-                        int argc, sqlite3_value** argv)
+                                      CPL_UNUSED int argc,
+                                      sqlite3_value** argv)
 {
     if( sqlite3_value_type (argv[0]) != SQLITE_TEXT ||
         sqlite3_value_type (argv[1]) != SQLITE_TEXT )
@@ -1399,7 +1465,8 @@ void OGRGeoPackageDisableSpatialIndex(sqlite3_context* pContext,
 
 static
 void GPKG_hstore_get_value(sqlite3_context* pContext,
-                          int argc, sqlite3_value** argv)
+                           CPL_UNUSED int argc,
+                           sqlite3_value** argv)
 {
     if( sqlite3_value_type (argv[0]) != SQLITE_TEXT ||
         sqlite3_value_type (argv[1]) != SQLITE_TEXT )

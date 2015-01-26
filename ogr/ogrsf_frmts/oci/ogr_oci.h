@@ -413,7 +413,6 @@ class OGROCITableLayer : public OGROCIWritableLayer
     OCIArray           *hElemInfoVARRAY;
 
     void                UpdateLayerExtents();
-    void                FinalizeNewLayer();
     void                CreateSpatialIndex();
 
     void                TestForSpatialIndex( const char * );
@@ -440,7 +439,7 @@ class OGROCITableLayer : public OGROCIWritableLayer
 
   public:
                         OGROCITableLayer( OGROCIDataSource *,
-                                          const char * pszName,
+                                          const char * pszName, OGRwkbGeometryType eGType,
                                           int nSRID, int bUpdate, int bNew );
                         ~OGROCITableLayer();
 

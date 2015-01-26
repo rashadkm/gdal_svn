@@ -69,7 +69,7 @@ def compare_image_pixels(golden_band, new_band, id, options=[]):
   for line in range(golden_band.YSize):
     golden_line = golden_band.ReadAsArray(0, line, golden_band.XSize, 1)[0]
     new_line = new_band.ReadAsArray(0, line, golden_band.XSize, 1)[0]
-    diff_line = golden_line - new_line
+    diff_line = golden_line.astype(float) - new_line.astype(float)
     max_diff = max(max_diff,abs(diff_line).max())
     diff_count += len(diff_line.nonzero()[0])
 
@@ -113,7 +113,7 @@ def compare_band(golden_band, new_band, id, options=[]):
     found_diff += 1
   else:
     for i in range(golden_band.GetOverviewCount()):
-      compare_band(golden_band.GetOverview(i),
+      found_diff += compare_band(golden_band.GetOverview(i),
                    new_band.GetOverview(i),
                    id + ' overview ' + str(i), 
                    options)

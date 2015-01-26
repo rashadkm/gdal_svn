@@ -63,11 +63,10 @@ IGMLReader::~IGMLReader()
 /*                          CreateGMLReader()                           */
 /************************************************************************/
 
-IGMLReader *CreateGMLReader(int bUseExpatParserPreferably,
-                            int bInvertAxisOrderIfLatLong,
-                            int bConsiderEPSGAsURN,
-                            int bGetSecondaryGeometryOption)
-
+IGMLReader *CreateGMLReader(CPL_UNUSED int bUseExpatParserPreferably,
+                            CPL_UNUSED int bInvertAxisOrderIfLatLong,
+                            CPL_UNUSED int bConsiderEPSGAsURN,
+                            CPL_UNUSED int bGetSecondaryGeometryOption)
 {
     CPLError( CE_Failure, CPLE_AppDefined,
               "Unable to create Xerces C++ or Expat based GML reader, Xerces or Expat support\n"
@@ -100,7 +99,7 @@ IGMLReader *CreateGMLReader(int bUseExpatParserPreferably,
 
 #endif
 
-int GMLReader::m_bXercesInitialized = -1;
+OGRGMLXercesState GMLReader::m_eXercesInitState = OGRGML_XERCES_UNINITIALIZED;
 int GMLReader::m_nInstanceCount = 0;
 void *GMLReader::hMutex = NULL;
 
@@ -108,11 +107,14 @@ void *GMLReader::hMutex = NULL;
 /*                             GMLReader()                              */
 /************************************************************************/
 
-GMLReader::GMLReader(int bUseExpatParserPreferably,
+GMLReader::GMLReader(
+#ifndef HAVE_EXPAT
+CPL_UNUSED
+#endif
+                     int bUseExpatParserPreferably,
                      int bInvertAxisOrderIfLatLong,
                      int bConsiderEPSGAsURN,
                      int bGetSecondaryGeometryOption)
-
 {
 #ifndef HAVE_XERCES
     bUseExpatReader = TRUE;
@@ -206,10 +208,10 @@ GMLReader::~GMLReader()
     {
     CPLMutexHolderD(&hMutex);
     --m_nInstanceCount;
-    if( m_nInstanceCount == 0 && m_bXercesInitialized > 0 )
+    if( m_nInstanceCount == 0 && m_eXercesInitState == OGRGML_XERCES_INIT_SUCCESSFUL )
     {
         XMLPlatformUtils::Terminate();
-        m_bXercesInitialized = FALSE;
+        m_eXercesInitState = OGRGML_XERCES_UNINITIALIZED;
     }
     }
 #endif
@@ -306,7 +308,7 @@ int GMLReader::SetupParserXerces()
     {
     CPLMutexHolderD(&hMutex);
     m_nInstanceCount++;
-    if( m_bXercesInitialized < 0 )
+    if( m_eXercesInitState == OGRGML_XERCES_UNINITIALIZED )
     {
         try
         {
@@ -318,12 +320,12 @@ int GMLReader::SetupParserXerces()
             CPLError( CE_Warning, CPLE_AppDefined,
                       "Exception initializing Xerces based GML reader.\n%s", 
                       tr_strdup(toCatch.getMessage()) );
-            m_bXercesInitialized = FALSE;
+            m_eXercesInitState = OGRGML_XERCES_INIT_FAILED;
             return FALSE;
         }
-        m_bXercesInitialized = TRUE;
+        m_eXercesInitState = OGRGML_XERCES_INIT_SUCCESSFUL;
     }
-    if( !m_bXercesInitialized )
+    if( m_eXercesInitState != OGRGML_XERCES_INIT_SUCCESSFUL )
         return FALSE;
     }
 

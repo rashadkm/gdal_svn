@@ -12,6 +12,7 @@
  **********************************************************************
  * Copyright (c) 1999-2003, Stephane Villeneuve
  * Copyright (c) 2011-2013, Even Rouault <even dot rouault at mines-paris dot org>
+ * Copyright (c) 2014, Even Rouault <even.rouault at spatialys.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -263,7 +264,7 @@ MIFFile::~MIFFile()
  *
  * Returns 0 on success, -1 on error.
  **********************************************************************/
-int MIFFile::Open(const char *pszFname, const char *pszAccess,
+int MIFFile::Open(const char *pszFname, TABAccess eAccess,
                   GBool bTestOpenNoError /*=FALSE*/ )
 {
     char *pszTmpFname = NULL;
@@ -282,12 +283,13 @@ int MIFFile::Open(const char *pszFname, const char *pszAccess,
     /*-----------------------------------------------------------------
      * Validate access mode
      *----------------------------------------------------------------*/
-    if (EQUALN(pszAccess, "r", 1))
+    const char* pszAccess = NULL;
+    if (eAccess == TABRead)
     {
         m_eAccessMode = TABRead;
         pszAccess = "rt";
     }
-    else if (EQUALN(pszAccess, "w", 1))
+    else if (eAccess == TABWrite)
     {
         m_eAccessMode = TABWrite;
         pszAccess = "wt";
@@ -300,7 +302,7 @@ int MIFFile::Open(const char *pszFname, const char *pszAccess,
     {
         if (!bTestOpenNoError)
             CPLError(CE_Failure, CPLE_FileIO,
-                 "Open() failed: access mode \"%s\" not supported", pszAccess);
+                 "Open() failed: access mode \"%d\" not supported", eAccess);
         else
             CPLErrorReset();
 
@@ -364,7 +366,8 @@ int MIFFile::Open(const char *pszFname, const char *pszAccess,
     /*-----------------------------------------------------------------
      * Read MIF File Header
      *----------------------------------------------------------------*/
-    if (m_eAccessMode == TABRead && ParseMIFHeader() != 0)
+    int bIsEmpty = FALSE;
+    if (m_eAccessMode == TABRead && ParseMIFHeader(&bIsEmpty) != 0)
     {
         Close();
 
@@ -423,7 +426,7 @@ int MIFFile::Open(const char *pszFname, const char *pszAccess,
     }
 
     /* Put the MID file at the correct location, on the first feature */
-    if (m_eAccessMode == TABRead && (m_poMIDFile != NULL && m_poMIDFile->GetLine() == NULL))
+    if (m_eAccessMode == TABRead && (m_poMIDFile != NULL && !bIsEmpty && m_poMIDFile->GetLine() == NULL))
     {
         Close();
 
@@ -447,7 +450,7 @@ int MIFFile::Open(const char *pszFname, const char *pszAccess,
      *------------------------------------------------------------*/
     int numPoints=0, numRegions=0, numTexts=0, numLines=0;
 
-    if( GetFeatureCountByType( numPoints, numLines, numRegions, numTexts, 
+    if( GetFeatureCountByType( numPoints, numLines, numRegions, numTexts,
                                FALSE ) == 0 )
     {
         numPoints += numTexts;
@@ -456,7 +459,9 @@ int MIFFile::Open(const char *pszFname, const char *pszAccess,
         else if( numPoints == 0 && numLines > 0 && numRegions == 0 )
             m_poDefn->SetGeomType( wkbLineString );
         else
-            /* we leave it unknown indicating a mixture */;
+        {
+            /* we leave it unknown indicating a mixture */
+        }
     }
 
     /* A newly created layer should have OGRFeatureDefn */
@@ -483,7 +488,7 @@ int MIFFile::Open(const char *pszFname, const char *pszAccess,
  *
  * Returns 0 on success, -1 on error.
  **********************************************************************/
-int MIFFile::ParseMIFHeader()
+int MIFFile::ParseMIFHeader(int* pbIsEmpty)
 {  
     GBool  bColumns = FALSE, bAllColumnsRead =  FALSE;
     int    nColumns = 0;
@@ -493,6 +498,8 @@ int MIFFile::ParseMIFHeader()
     
     const char *pszLine;
     char **papszToken;
+    
+    *pbIsEmpty = FALSE;
 
     char *pszFeatureClassName = TABGetBasename(m_pszFname);
     m_poDefn = new OGRFeatureDefn(pszFeatureClassName);
@@ -676,6 +683,8 @@ int MIFFile::ParseMIFHeader()
     while (((pszLine = m_poMIFFile->GetLine()) != NULL) && 
            m_poMIFFile->IsValidFeature(pszLine) == FALSE)
         ;
+    
+    *pbIsEmpty = (pszLine == NULL);
 
     /*-----------------------------------------------------------------
      * Check for Unique and Indexed flags
@@ -1099,13 +1108,8 @@ int MIFFile::WriteMIFHeader()
         switch(m_paeFieldType[iField])
         {
           case TABFInteger:
-            if (poFieldDefn->GetWidth() == 0)
-                m_poMIFFile->WriteLine("  %s Integer\n",
-                                   poFieldDefn->GetNameRef());
-            else
-                m_poMIFFile->WriteLine("  %s Integer(%d)\n",
-                                   poFieldDefn->GetNameRef(),
-                                   poFieldDefn->GetWidth());
+            m_poMIFFile->WriteLine("  %s Integer\n",
+                                poFieldDefn->GetNameRef());
             break;
           case TABFSmallInt:
             m_poMIFFile->WriteLine("  %s SmallInt\n",
@@ -1773,7 +1777,7 @@ int MIFFile::AddFieldNative(const char *pszName, TABFieldType eMapInfoType,
      *----------------------------------------------------------------*/
     if (eMapInfoType == TABFDecimal && nWidth == 0)
         nWidth=20;
-    else if (nWidth == 0)
+    else if (eMapInfoType == TABFChar && nWidth == 0)
         nWidth=254; /* char fields */
 
     /*-----------------------------------------------------------------

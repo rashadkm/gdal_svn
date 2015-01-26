@@ -806,7 +806,7 @@ GBool PostGISRasterDataset::AddComplexSource(PostGISRasterTileDataset* poRTDS)
         "Tile bounding box from (%d, %d) of size (%d, %d) will "
         "cover raster bounding box from (%d, %d) of size "
         "(%d, %d)", 0, 0, 
-        poRTDS>GetRasterXSize(), 
+        poRTDS->GetRasterXSize(), 
         poRTDS->GetRasterYSize(),
         nDstXOff, nDstYOff, nDstXSize, nDstYSize);
 #endif
@@ -1406,12 +1406,6 @@ PostGISRasterTileDataset* PostGISRasterDataset::BuildRasterTileDataset(const cha
 
         return NULL;
     }
-
-#ifdef DEBUG_VERBOSE
-    CPLDebug("PostGIS_Raster", "PostGISRasterDataset::"
-            "Tile pixel size = (%f, %f)", tilePixelSizeX, 
-            tilePixelSizeY);
-#endif
 
     int nTileWidth = atoi(papszParams[POS_WIDTH]);
     int nTileHeight = atoi(papszParams[POS_HEIGHT]);
@@ -2040,7 +2034,8 @@ GBool PostGISRasterDataset::SetRasterProperties
             "from (select srid, extent geom, num_bands nbband, "
             "scale_x, scale_y, blocksize_x, blocksize_y, same_alignment, regular_blocking from "
             "raster_columns where r_table_schema = '%s' and "
-            "r_table_name = '%s') foo", pszSchema, pszTable);
+            "r_table_name = '%s' and r_raster_column = '%s' ) foo",
+            pszSchema, pszTable, pszColumn);
             
 #ifdef DEBUG_QUERY
         CPLDebug("PostGIS_Raster", 
@@ -3144,10 +3139,13 @@ char **PostGISRasterDataset::GetFileList()
 /********************************************************
  * \brief Create a copy of a PostGIS Raster dataset.
  ********************************************************/
-GDALDataset * 
-PostGISRasterDataset::CreateCopy( const char * pszFilename,
-    GDALDataset *poGSrcDS, int bStrict, char ** papszOptions, 
-    GDALProgressFunc pfnProgress, void * pProgressData ) 
+GDALDataset *
+PostGISRasterDataset::CreateCopy( CPL_UNUSED const char * pszFilename,
+                                  GDALDataset *poGSrcDS,
+                                  CPL_UNUSED int bStrict,
+                                  CPL_UNUSED char ** papszOptions,
+                                  CPL_UNUSED GDALProgressFunc pfnProgress,
+                                  CPL_UNUSED void * pProgressData )
 {
     char* pszSchema = NULL;
     char* pszTable = NULL;
@@ -3161,10 +3159,10 @@ PostGISRasterDataset::CreateCopy( const char * pszFilename,
     PGresult * poResult = NULL;
     CPLString osCommand;
     GBool bInsertSuccess;
-    
+
     if( poGSrcDS->GetDriver() != GDALGetDriverByName("PostGISRaster") )
     {
-        CPLError( CE_Failure, CPLE_NotSupported, 
+        CPLError( CE_Failure, CPLE_NotSupported,
             "PostGISRasterDataset::CreateCopy() only works on source "
             "datasets that are PostGISRaster" );
         return NULL;
@@ -3691,4 +3689,3 @@ void GDALRegister_PostGISRaster() {
         GetGDALDriverManager()->RegisterDriver(poDriver);
     }
 }
-

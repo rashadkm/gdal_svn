@@ -268,6 +268,8 @@ public:
 
     int                 nSrcXSize;
     int                 nSrcYSize;
+    int                 nSrcXExtraSize; /* extra pixels (included in nSrcXSize) reserved for filter window. Should be ignored in scale computation */
+    int                 nSrcYExtraSize; /* extra pixels (included in nSrcYSize) reserved for filter window. Should be ignored in scale computation */
     GByte               **papabySrcImage; /* each subarray must have WARP_EXTRA_ELTS at the end */
 
     GUInt32           **papanBandSrcValid; /* each subarray must have WARP_EXTRA_ELTS at the end */
@@ -323,6 +325,8 @@ public:
 /*      masks.  Actual resampling is done by the GDALWarpKernel.        */
 /************************************************************************/
 
+typedef struct _GDALWarpChunk GDALWarpChunk;
+
 class CPL_DLL GDALWarpOperation {
 private:
     GDALWarpOptions *psOptions;
@@ -333,19 +337,18 @@ private:
     CPLErr          ComputeSourceWindow( int nDstXOff, int nDstYOff, 
                                          int nDstXSize, int nDstYSize,
                                          int *pnSrcXOff, int *pnSrcYOff, 
-                                         int *pnSrcXSize, int *pnSrcYSize );
+                                         int *pnSrcXSize, int *pnSrcYSize,
+                                         int *pnSrcXExtraSize, int *pnSrcYExtraSize );
 
     CPLErr          CreateKernelMask( GDALWarpKernel *, int iBand, 
                                       const char *pszType );
 
-    void            *unused1;
-    void            *unused2;
     void            *hIOMutex;
     void            *hWarpMutex;
 
     int             nChunkListCount;
     int             nChunkListMax;
-    int            *panChunkList;
+    GDALWarpChunk  *pasChunkList;
 
     int             bReportTimings;
     unsigned long   nLastTimeReported;
@@ -372,7 +375,12 @@ public:
                                 int nSrcXOff=0, int nSrcYOff=0,
                                 int nSrcXSize=0, int nSrcYSize=0,
                                 double dfProgressBase=0.0, double dfProgressScale=1.0);
-    
+    CPLErr          WarpRegion( int nDstXOff, int nDstYOff, 
+                                int nDstXSize, int nDstYSize,
+                                int nSrcXOff, int nSrcYOff,
+                                int nSrcXSize, int nSrcYSize,
+                                int nSrcXExtraSize, int nSrcYExtraSize,
+                                double dfProgressBase, double dfProgressScale);
     CPLErr          WarpRegionToBuffer( int nDstXOff, int nDstYOff, 
                                         int nDstXSize, int nDstYSize, 
                                         void *pDataBuf, 
@@ -380,6 +388,14 @@ public:
                                         int nSrcXOff=0, int nSrcYOff=0,
                                         int nSrcXSize=0, int nSrcYSize=0,
                                         double dfProgressBase=0.0, double dfProgressScale=1.0);
+    CPLErr          WarpRegionToBuffer( int nDstXOff, int nDstYOff, 
+                                        int nDstXSize, int nDstYSize, 
+                                        void *pDataBuf, 
+                                        GDALDataType eBufDataType,
+                                        int nSrcXOff, int nSrcYOff,
+                                        int nSrcXSize, int nSrcYSize,
+                                        int nSrcXExtraSize, int nSrcYExtraSize,
+                                        double dfProgressBase, double dfProgressScale);
 };
 
 #endif /* def __cplusplus */

@@ -149,24 +149,26 @@ OGRGeometry *OGRVFKLayer::CreateGeometry(IVFKFeature * poVfkFeature)
 /*!
   \brief Get feature count
 
-  This method overwrites OGRLayer::GetFeatureCount(), 
+  This method overwrites OGRLayer::GetFeatureCount(),
 
   \param bForce skip (return -1)
 
   \return number of features
 */
-int OGRVFKLayer::GetFeatureCount(int bForce)
+int OGRVFKLayer::GetFeatureCount(CPL_UNUSED int bForce)
 {
     int nfeatures;
 
-    if (m_poFilterGeom || m_poAttrQuery || bForce)
-        nfeatures = OGRLayer::GetFeatureCount(bForce);
-    else
-        nfeatures = poDataBlock->GetFeatureCount();
-    
+    /* note that 'nfeatures' is 0 when data are not read from DB */
+    nfeatures = poDataBlock->GetFeatureCount();
+    if (m_poFilterGeom || m_poAttrQuery || nfeatures < 1) {
+        /* force real feature count */
+        nfeatures = OGRLayer::GetFeatureCount();
+    }
+
     CPLDebug("OGR-VFK", "OGRVFKLayer::GetFeatureCount(): name=%s -> n=%d",
              GetName(), nfeatures);
-    
+
     return nfeatures;
 }
 

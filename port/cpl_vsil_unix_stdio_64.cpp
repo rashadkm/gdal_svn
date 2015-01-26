@@ -169,7 +169,11 @@ class VSIUnixStdioHandle : public VSIVirtualHandle
 /*                       VSIUnixStdioHandle()                           */
 /************************************************************************/
 
-VSIUnixStdioHandle::VSIUnixStdioHandle(VSIUnixStdioFilesystemHandler *poFSIn,
+VSIUnixStdioHandle::VSIUnixStdioHandle(
+#ifndef VSI_COUNT_BYTES_READ
+CPL_UNUSED
+#endif
+                                       VSIUnixStdioFilesystemHandler *poFSIn,
                                        FILE* fpIn, int bReadOnlyIn) :
     fp(fpIn), nOffset(0), bReadOnly(bReadOnlyIn), bLastOpWrite(FALSE), bLastOpRead(FALSE), bAtEOF(FALSE)
 #ifdef VSI_COUNT_BYTES_READ
@@ -203,6 +207,8 @@ int VSIUnixStdioHandle::Seek( vsi_l_offset nOffset, int nWhence )
 {
     GByte abyTemp[4096];
 
+    bAtEOF = FALSE;
+
     // seeks that do nothing are still surprisingly expensive with MSVCRT.
     // try and short circuit if possible.
     if( nWhence == SEEK_SET && nOffset == this->nOffset )
@@ -221,7 +227,6 @@ int VSIUnixStdioHandle::Seek( vsi_l_offset nOffset, int nWhence )
                 this->nOffset = nOffset;
                 bLastOpWrite = FALSE;
                 bLastOpRead = FALSE;
-                bAtEOF = FALSE;
                 return 0;
             }
         }
@@ -273,7 +278,6 @@ int VSIUnixStdioHandle::Seek( vsi_l_offset nOffset, int nWhence )
         
     bLastOpWrite = FALSE;
     bLastOpRead = FALSE;
-    bAtEOF = FALSE;
 
     errno = nError;
     return nResult;
@@ -502,10 +506,9 @@ VSIUnixStdioFilesystemHandler::Open( const char *pszFilename,
 /*                                Stat()                                */
 /************************************************************************/
 
-int VSIUnixStdioFilesystemHandler::Stat( const char * pszFilename, 
+int VSIUnixStdioFilesystemHandler::Stat( const char * pszFilename,
                                          VSIStatBufL * pStatBuf,
-                                         int nFlags)
-
+                                         CPL_UNUSED int nFlags)
 {
     return( VSI_STAT64( pszFilename, pStatBuf ) );
 }

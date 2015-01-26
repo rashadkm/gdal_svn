@@ -1,0 +1,1 @@
+The gnm/frmts intends to be a root for the supported network formats. Add new folder with the sources and headers of the GNMFormat and GNMNetwork implementations here.

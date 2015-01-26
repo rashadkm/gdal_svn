@@ -1,0 +1,12 @@
+OBJ	=	gnmstdanalysis.obj
+
+GDAL_ROOT	=	..\..
+
+!INCLUDE ..\..\nmake.opt
+
+EXTRAFLAGS =	-I..\..\ogr -I..\..\ogr\ogrsf_frmts -I..\..\gcore -I..\..\gnm -I..\..\gnm\frmts
+
+default:	$(OBJ) 
+
+clean:
+	-del *.obj

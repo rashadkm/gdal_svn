@@ -29,13 +29,18 @@ cmake_minimum_required (VERSION 2.8.10)
 set(LIB_NAME "ogrsf_pg")
 project ("lib${LIB_NAME}")
 
-
 find_package(POSTGRES REQUIRED)
 if(POSTGRES_FOUND)
 	include_directories(${POSTGRES_INCLUDE_DIR})
 	add_definitions(-DHAVE_PG)
 	set(GDAL_HAVE_PG ON CACHE INTERNAL "GDAL_HAVE_PG")
 endif(POSTGRES_FOUND)
+
+find_package(OPENSSL) # in some cases libpq can require openssl
+if(OPENSSL_FOUND)
+    include_directories(${OPENSSL_INCLUDE_DIR})
+    add_definitions(-DHAVE_OPENSSL -DUSE_SSL)
+endif(OPENSSL_FOUND)
 
 set(LIB_INST_HEADERS
 	ogr_pg.h
@@ -58,8 +63,11 @@ set(GDAL_TARGET_OBJECTS ${GDAL_TARGET_OBJECTS} $<TARGET_OBJECTS:${LIB_NAME}> PAR
 add_library(${LIB_NAME} OBJECT ${LIB_HHEADERS} ${LIB_CSOURCES})
 
 if(POSTGRES_FOUND)
+    if(OPENSSL_FOUND)
+        set(GDAL_TARGET_LINK_LIB ${GDAL_TARGET_LINK_LIB} ${OPENSSL_LIBRARIES})
+    endif(OPENSSL_FOUND)    
     if(WIN32)
-		set(GDAL_TARGET_LINK_LIB ${GDAL_TARGET_LINK_LIB} ${POSTGRES_LIBRARY} Ws2_32.lib Secur32.lib PARENT_SCOPE)
+        set(GDAL_TARGET_LINK_LIB ${GDAL_TARGET_LINK_LIB} ${POSTGRES_LIBRARY} Ws2_32.lib Secur32.lib PARENT_SCOPE)
 	else(WIN32)	
 		set(GDAL_TARGET_LINK_LIB ${GDAL_TARGET_LINK_LIB} ${POSTGRES_LIBRARY} PARENT_SCOPE)
     endif(WIN32)

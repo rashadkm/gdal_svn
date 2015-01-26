@@ -39,7 +39,7 @@
 #define HAS_ISNAN_MACRO
 #endif
 #include <algorithm>
-#if defined(HAS_ISNAN_MACRO) and !defined(isnan)
+#if defined(HAS_ISNAN_MACRO) && !defined(isnan)
 #define isnan std::isnan
 #endif
 
@@ -59,8 +59,10 @@ VRTSource::~VRTSource()
 /*                             GetFileList()                            */
 /************************************************************************/
 
-void VRTSource::GetFileList(char*** ppapszFileList, int *pnSize,
-                            int *pnMaxSize, CPLHashSet* hSetFiles)
+void VRTSource::GetFileList(CPL_UNUSED char*** ppapszFileList,
+                            CPL_UNUSED int *pnSize,
+                            CPL_UNUSED int *pnMaxSize,
+                            CPL_UNUSED CPLHashSet* hSetFiles)
 {
 }
 
@@ -299,6 +301,9 @@ CPLXMLNode *VRTSimpleSource::SerializeToXML( const char *pszVRTPath )
                           CXT_Attribute, "relativeToVRT" ), 
         CXT_Text, bRelativeToVRT ? "1" : "0" );
 
+    char** papszOpenOptions = poDS->GetOpenOptions();
+    GDALSerializeOpenOptionsToXML(psSrc, papszOpenOptions);
+
     if (poMaskBandMainBand)
         CPLSetXMLValue( psSrc, "SourceBand",
                         CPLSPrintf("mask,%d",poMaskBandMainBand->GetBand()) );
@@ -479,6 +484,8 @@ CPLErr VRTSimpleSource::XMLInit( CPLXMLNode *psSrc, const char *pszVRTPath )
         nBlockYSize = atoi(CPLGetXMLValue(psSrcProperties,"BlockYSize","0"));
     }
 
+    char** papszOpenOptions = GDALDeserializeOpenOptionsFromXML(psSrc);
+
     GDALDataset *poSrcDS;
     if (nRasterXSize == 0 || nRasterYSize == 0 || eDataType == (GDALDataType)-1 ||
         nBlockXSize == 0 || nBlockYSize == 0)
@@ -486,7 +493,9 @@ CPLErr VRTSimpleSource::XMLInit( CPLXMLNode *psSrc, const char *pszVRTPath )
         /* -------------------------------------------------------------------- */
         /*      Open the file (shared).                                         */
         /* -------------------------------------------------------------------- */
-        poSrcDS = (GDALDataset *) GDALOpenShared( pszSrcDSName, GA_ReadOnly );
+        poSrcDS = (GDALDataset *) GDALOpenEx(
+                    pszSrcDSName, GDAL_OF_SHARED | GDAL_OF_RASTER | GDAL_OF_VERBOSE_ERROR, NULL,
+                    (const char* const* )papszOpenOptions, NULL );
     }
     else
     {
@@ -495,6 +504,7 @@ CPLErr VRTSimpleSource::XMLInit( CPLXMLNode *psSrc, const char *pszVRTPath )
         /* -------------------------------------------------------------------- */
         int i;
         GDALProxyPoolDataset* proxyDS = new GDALProxyPoolDataset(pszSrcDSName, nRasterXSize, nRasterYSize, GA_ReadOnly, TRUE);
+        proxyDS->SetOpenOptions(papszOpenOptions);
         poSrcDS = proxyDS;
 
         /* Only the information of rasterBand nSrcBand will be accurate */
@@ -504,6 +514,8 @@ CPLErr VRTSimpleSource::XMLInit( CPLXMLNode *psSrc, const char *pszVRTPath )
         if (bGetMaskBand)
             ((GDALProxyPoolRasterBand*)proxyDS->GetRasterBand(nSrcBand))->AddSrcMaskBandDescription(eDataType, nBlockXSize, nBlockYSize);
     }
+    
+    CSLDestroy(papszOpenOptions);
 
     CPLFree( pszSrcDSName );
     
@@ -1300,7 +1312,9 @@ VRTAveragedSource::RasterIO( int nXOff, int nYOff, int nXSize, int nYSize,
 /*                             GetMinimum()                             */
 /************************************************************************/
 
-double VRTAveragedSource::GetMinimum( int nXSize, int nYSize, int *pbSuccess )
+double VRTAveragedSource::GetMinimum( CPL_UNUSED int nXSize,
+                                      CPL_UNUSED int nYSize,
+                                      CPL_UNUSED int *pbSuccess )
 {
     *pbSuccess = FALSE;
     return 0;
@@ -1310,7 +1324,9 @@ double VRTAveragedSource::GetMinimum( int nXSize, int nYSize, int *pbSuccess )
 /*                             GetMaximum()                             */
 /************************************************************************/
 
-double VRTAveragedSource::GetMaximum( int nXSize, int nYSize, int *pbSuccess )
+double VRTAveragedSource::GetMaximum( CPL_UNUSED int nXSize,
+                                      CPL_UNUSED int nYSize,
+                                      CPL_UNUSED int *pbSuccess )
 {
     *pbSuccess = FALSE;
     return 0;
@@ -1320,7 +1336,10 @@ double VRTAveragedSource::GetMaximum( int nXSize, int nYSize, int *pbSuccess )
 /*                       ComputeRasterMinMax()                          */
 /************************************************************************/
 
-CPLErr VRTAveragedSource::ComputeRasterMinMax( int nXSize, int nYSize, int bApproxOK, double* adfMinMax )
+CPLErr VRTAveragedSource::ComputeRasterMinMax( CPL_UNUSED int nXSize,
+                                               CPL_UNUSED int nYSize,
+                                               CPL_UNUSED int bApproxOK,
+                                               CPL_UNUSED double* adfMinMax )
 {
     return CE_Failure;
 }
@@ -1329,11 +1348,15 @@ CPLErr VRTAveragedSource::ComputeRasterMinMax( int nXSize, int nYSize, int bAppr
 /*                         ComputeStatistics()                          */
 /************************************************************************/
 
-CPLErr VRTAveragedSource::ComputeStatistics( int nXSize, int nYSize,
-                                      int bApproxOK, 
-                                      double *pdfMin, double *pdfMax, 
-                                      double *pdfMean, double *pdfStdDev,
-                                      GDALProgressFunc pfnProgress, void *pProgressData )
+CPLErr VRTAveragedSource::ComputeStatistics( CPL_UNUSED int nXSize,
+                                             CPL_UNUSED int nYSize,
+                                             CPL_UNUSED int bApproxOK,
+                                             CPL_UNUSED double *pdfMin,
+                                             CPL_UNUSED double *pdfMax,
+                                             CPL_UNUSED double *pdfMean,
+                                             CPL_UNUSED double *pdfStdDev,
+                                             CPL_UNUSED GDALProgressFunc pfnProgress,
+                                             CPL_UNUSED void *pProgressData )
 {
     return CE_Failure;
 }
@@ -1342,11 +1365,16 @@ CPLErr VRTAveragedSource::ComputeStatistics( int nXSize, int nYSize,
 /*                            GetHistogram()                            */
 /************************************************************************/
 
-CPLErr VRTAveragedSource::GetHistogram( int nXSize, int nYSize,
-                                  double dfMin, double dfMax,
-                                  int nBuckets, int * panHistogram,
-                                  int bIncludeOutOfRange, int bApproxOK,
-                                  GDALProgressFunc pfnProgress, void *pProgressData )
+CPLErr VRTAveragedSource::GetHistogram( CPL_UNUSED int nXSize,
+                                        CPL_UNUSED int nYSize,
+                                        CPL_UNUSED double dfMin,
+                                        CPL_UNUSED double dfMax,
+                                        CPL_UNUSED int nBuckets,
+                                        CPL_UNUSED int * panHistogram,
+                                        CPL_UNUSED int bIncludeOutOfRange,
+                                        CPL_UNUSED int bApproxOK,
+                                        CPL_UNUSED GDALProgressFunc pfnProgress,
+                                        CPL_UNUSED void *pProgressData )
 {
     return CE_Failure;
 }
@@ -2004,8 +2032,7 @@ VRTFuncSource::~VRTFuncSource()
 /*                           SerializeToXML()                           */
 /************************************************************************/
 
-CPLXMLNode *VRTFuncSource::SerializeToXML( const char * pszVRTPath )
-
+CPLXMLNode *VRTFuncSource::SerializeToXML( CPL_UNUSED const char * pszVRTPath )
 {
     return NULL;
 }
@@ -2048,7 +2075,9 @@ VRTFuncSource::RasterIO( int nXOff, int nYOff, int nXSize, int nYSize,
 /*                             GetMinimum()                             */
 /************************************************************************/
 
-double VRTFuncSource::GetMinimum( int nXSize, int nYSize, int *pbSuccess )
+double VRTFuncSource::GetMinimum( CPL_UNUSED int nXSize,
+                                  CPL_UNUSED int nYSize,
+                                  CPL_UNUSED CPL_UNUSED int *pbSuccess )
 {
     *pbSuccess = FALSE;
     return 0;
@@ -2058,7 +2087,9 @@ double VRTFuncSource::GetMinimum( int nXSize, int nYSize, int *pbSuccess )
 /*                             GetMaximum()                             */
 /************************************************************************/
 
-double VRTFuncSource::GetMaximum( int nXSize, int nYSize, int *pbSuccess )
+double VRTFuncSource::GetMaximum( CPL_UNUSED int nXSize,
+                                  CPL_UNUSED int nYSize,
+                                  CPL_UNUSED int *pbSuccess )
 {
     *pbSuccess = FALSE;
     return 0;
@@ -2068,7 +2099,10 @@ double VRTFuncSource::GetMaximum( int nXSize, int nYSize, int *pbSuccess )
 /*                       ComputeRasterMinMax()                          */
 /************************************************************************/
 
-CPLErr VRTFuncSource::ComputeRasterMinMax( int nXSize, int nYSize, int bApproxOK, double* adfMinMax )
+CPLErr VRTFuncSource::ComputeRasterMinMax( CPL_UNUSED int nXSize,
+                                           CPL_UNUSED int nYSize,
+                                           CPL_UNUSED int bApproxOK,
+                                           CPL_UNUSED double* adfMinMax )
 {
     return CE_Failure;
 }
@@ -2077,11 +2111,15 @@ CPLErr VRTFuncSource::ComputeRasterMinMax( int nXSize, int nYSize, int bApproxOK
 /*                         ComputeStatistics()                          */
 /************************************************************************/
 
-CPLErr VRTFuncSource::ComputeStatistics( int nXSize, int nYSize,
-                                      int bApproxOK, 
-                                      double *pdfMin, double *pdfMax, 
-                                      double *pdfMean, double *pdfStdDev,
-                                      GDALProgressFunc pfnProgress, void *pProgressData )
+CPLErr VRTFuncSource::ComputeStatistics( CPL_UNUSED int nXSize,
+                                         CPL_UNUSED int nYSize,
+                                         CPL_UNUSED int bApproxOK,
+                                         CPL_UNUSED double *pdfMin,
+                                         CPL_UNUSED double *pdfMax,
+                                         CPL_UNUSED double *pdfMean,
+                                         CPL_UNUSED double *pdfStdDev,
+                                         CPL_UNUSED GDALProgressFunc pfnProgress,
+                                         CPL_UNUSED void *pProgressData )
 {
     return CE_Failure;
 }
@@ -2090,11 +2128,16 @@ CPLErr VRTFuncSource::ComputeStatistics( int nXSize, int nYSize,
 /*                            GetHistogram()                            */
 /************************************************************************/
 
-CPLErr VRTFuncSource::GetHistogram( int nXSize, int nYSize,
-                                  double dfMin, double dfMax,
-                                  int nBuckets, int * panHistogram,
-                                  int bIncludeOutOfRange, int bApproxOK,
-                                  GDALProgressFunc pfnProgress, void *pProgressData )
+CPLErr VRTFuncSource::GetHistogram( CPL_UNUSED int nXSize,
+                                    CPL_UNUSED int nYSize,
+                                    CPL_UNUSED double dfMin,
+                                    CPL_UNUSED double dfMax,
+                                    CPL_UNUSED int nBuckets,
+                                    CPL_UNUSED int * panHistogram,
+                                    CPL_UNUSED int bIncludeOutOfRange,
+                                    CPL_UNUSED int bApproxOK,
+                                    CPL_UNUSED GDALProgressFunc pfnProgress,
+                                    CPL_UNUSED void *pProgressData )
 {
     return CE_Failure;
 }
@@ -2136,4 +2179,3 @@ VRTSource *VRTParseCoreSources( CPLXMLNode *psChild, const char *pszVRTPath )
     delete poSource;
     return NULL;
 }
-

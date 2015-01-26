@@ -134,6 +134,8 @@ docs:
 	cp ogr/ogrsf_frmts/*/drv_*.html html
 	cp ogr/ogrsf_frmts/ogr_formats.html html
 	cp ogr/ogr_feature_style.html html
+	cp ogr/ogrsf_frmts/gpkg/geopackage_aspatial.html html
+	cp ogr/*.gif html
 
 .PHONY: man
 

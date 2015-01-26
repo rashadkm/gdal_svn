@@ -65,7 +65,7 @@ static GDALDataset *OGRSelafinDriverOpen( GDALOpenInfo* poOpenInfo ) {
         return NULL;
     
     OGRSelafinDataSource *poDS = new OGRSelafinDataSource();
-    if( !poDS->Open(poOpenInfo->pszFilename, poOpenInfo->eAccess == GA_Update) ) {
+    if( !poDS->Open(poOpenInfo->pszFilename, poOpenInfo->eAccess == GA_Update, FALSE) ) {
         delete poDS;
         poDS = NULL;
     }
@@ -76,8 +76,12 @@ static GDALDataset *OGRSelafinDriverOpen( GDALOpenInfo* poOpenInfo ) {
 /*                       OGRSelafinDriverCreate()                       */
 /************************************************************************/
 
-static GDALDataset *OGRSelafinDriverCreate( const char * pszName, int nXSize, int nYSize,
-                                     int nBands, GDALDataType eDT, char **papszOptions ) {
+static GDALDataset *OGRSelafinDriverCreate( const char * pszName,
+                                            CPL_UNUSED int nXSize,
+                                            CPL_UNUSED int nYSize,
+                                            CPL_UNUSED int nBands,
+                                            CPL_UNUSED GDALDataType eDT,
+                                            char **papszOptions ) {
     // First, ensure there isn't any such file yet.
     VSIStatBufL sStatBuf;
     if (strcmp(pszName, "/dev/stdout") == 0) pszName = "/vsistdout/";
@@ -143,7 +147,7 @@ static GDALDataset *OGRSelafinDriverCreate( const char * pszName, int nXSize, in
     }
     // Force it to open as a datasource
     OGRSelafinDataSource *poDS = new OGRSelafinDataSource();
-    if( !poDS->Open( pszName, TRUE) ) {
+    if( !poDS->Open( pszName, TRUE, TRUE ) ) {
         delete poDS;
         return NULL;
     }
@@ -195,4 +199,3 @@ void RegisterOGRSelafin() {
         GetGDALDriverManager()->RegisterDriver( poDriver );
     }
 }
-

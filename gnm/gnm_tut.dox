@@ -1,0 +1,228 @@
+/*! \page gnm_tut GNM Tutorial
+
+This document is intended to describe using the GNM C++ classes to work with networks. It is  advised to read the <a href="gnm_arch.html">GNM architecture</a> before to understand the purpose and structure of GNM classes.
+
+\section gnm_tut_manage Managing networks
+
+In the first example we will create a small water network over the set of spatial data (two shapefiles: pipes and wells which are situated at the GDAL source tree: autotest\gnm\data). After the creation we will build a topology and add some additional data: pumps layer, in order to manually edit network topology.
+
+Initially we register GDAL drivers and create some options (string pairs), which will be passed as parameters during network creation. Here we create a network's name.
+
+\code
+#include "gnm.h"
+
+int main ()
+{
+    GDALAllRegister();
+
+    char **options = NULL;
+    options = CSLAddNameValue(options,GNM_INIT_OPTIONPAIR_NAME, "my_pipes_network");
+\endcode
+    
+The options are not obligatory, while the following parameters must be specified during the network creation. We must set the name/path of the created dataset, the name of its format and the spatial reference system for the created network (will be set via "user input"). The according dataset with connectivity will be created and the resulting network will be returned.
+
+\code
+    GNMGdalNetwork *poNet;
+    poNet = GNMManager::GdalCreateNetwork("..\\network_data", "ESRI Shapefile", "EPSG:4326", options);
+    CSLDestroy(options);
+    if (poNet == NULL)
+    {
+        printf("Failed to create network\n");
+        exit(1);
+    }
+\endcode
+
+For now we have a void network consisted of special system layers. We need to populate it with layers and features, so we open a certain dataset and copy layers from it to our network. Note, that here and later we use only GNMGdalNetwork:: methods for working with layers and features instead of using GDALDataset::, because we want that all our actions will have an influence in the context of network. For example during the  GNMGdalNetwork::CopyLayer() the copied layers will have a special names and will be registered in the network special way. The underlying  GDALDataset instance now can be used only for reading, otherwise the unexpected behavior can occur.
+
+\code
+    GDALDataset *poSrcDS = (GDALDataset*) GDALOpenEx("..\\in_data",
+                                    GDAL_OF_VECTOR | GDAL_OF_READONLY, NULL, NULL, NULL );
+    if(poSrcDS == NULL)
+    {
+        printf("Can not open source dataset at\n");
+        exit(1);
+    }
+
+    OGRLayer *poSrcLayer1 = poSrcDS->GetLayerByName("pipes");
+    OGRLayer *poSrcLayer2 = poSrcDS->GetLayerByName("wells");
+    if (poSrcLayer1 == NULL || poSrcLayer2 == NULL)
+    {
+        printf("Can not process layers of source dataset\n");
+        exit(1);
+    }
+
+    GNMErr err1 = poNet->CopyLayer(poSrcLayer1, "pipes");
+    GNMErr err2 = poNet->CopyLayer(poSrcLayer2, "wells");
+    if (err1 != GNMERR_NONE || err2 != GNMERR_NONE)
+    {
+        printf("Can not import layers from source dataset\n");
+        exit(1);
+    }
+
+    GDALClose(poSrcDS);
+\endcode
+
+After the successful copying we have the network full of features, but with no topology. The features were added and registered in the network but they are still not connected with each other. Before we build a network topology we set some rules in order to describe some network's business logic. For example we want our "pipes" features to have costs in graph extracted from their fields "width". We create the according rule in our network.
+
+\code
+    if (poNet->CreateRule("CLASS gnm_pipes_line COSTS width") != GNMERR_NONE)
+    {
+        printf("Can not create rule\n");
+    }
+\endcode
+
+Now it is time to build the network topology. There are two ways of doing this in GNM: manually or automatically. In the most cases automatic building is more convenient, while manual is useful for small editings. Automatic building requires some parameters: we must specify which layers will participate in topology building (we select our two layers) and a snap tolerance, which is equal 0.00005 in our case. If the building will be successful the network's graph will be filled with the according connections.
+
+\code
+    printf("\nBuilding network topology ...\n");
+    GDALDataset *poNetDS = poNet->GetDataset();
+    OGRLayer **layers = new OGRLayer*[3];
+    layers[0] = poNetDS->GetLayerByName("gnm_pipes_line");
+    layers[1] = poNetDS->GetLayerByName("gnm_wells_point");
+    layers[2] = NULL;
+
+    if (poNet->AutoConnect(layers, 0.00005, NULL) != GNMERR_NONE)
+    {
+        printf("Building topology failed\n");
+        exit(1);
+    }
+    else
+    {
+        printf("Topology has been built successfully\n");
+    }
+
+    delete[] layers;
+\endcode
+
+At this point we have a ready network with topological and spatial data, which can be used now for different purposes (analysis, converting into different formats, etc). But sometimes it is necessary to modify some network's data. For example we need to add additional features and attach them to our built topology (modify topology). We create a new layer in the network and add one feature to it.
+
+\code
+    OGRFeatureDefn *poFeatureDefn = new OGRFeatureDefn();
+    OGRFieldDefn fieldDefn ("pressure",OFTReal);
+    poFeatureDefn->AddFieldDefn(&fieldDefn);
+    OGRLayer *poNewLayer = poNet->CreateLayer("pumps", poFeatureDefn, NULL, wkbPoint);
+    if (poNewLayer == NULL)
+    {
+        printf("Can not create new layer\n");
+        exit(1);
+    }
+    delete poFeatureDefn;
+
+    // We won't use poFeatureDefn because it has been changed after poNet->CreateLayer()
+    OGRFeature *poFeature = OGRFeature::CreateFeature(poNewLayer->GetLayerDefn());
+    OGRPoint pt;
+    pt.setX(37.291466);
+    pt.setY(55.828351);
+    poFeature->SetGeometry(&pt);
+    GNMGFID gfid = poNet->CreateFeature(poNewLayer, poFeature);
+    if (gfid == -1)
+    {
+        printf("Can not create new feature\n");
+        exit(1);
+    }
+    OGRFeature::DestroyFeature(poFeature);   
+\endcode
+
+After the successful creation the feature will be registered in the network and we can connect it with others. According to the concept of GNM any connection can be physical or virtual. In the first case we need a real feature which will be an edge in the connection, while in the second case we do not need such feature, and passing -1 into the ConnectFeatures() method means that the special system edge will be created for this connection and added to the graph. In our case we had added only one point feature and we have not got the line one to be an edge, so we will use the virtual connection. We pass the GFID of our point as the source, the GFID of one of the existed features as the target and -1 as the connector. Note that we also set the costs (direct and inverse) and the direction of our edge manually and these values will be written to the graph. When we used the automatic connection (which also uses ConnectFeatures() internally) such vales were set automatically according to the rule which we also set before.
+
+\code
+    if (poNet->ConnectFeatures(gfid ,63, -1, 5.0, 5.0, GNM_DIR_SRCTOTGT
+) != GNMERR_NONE)
+    {
+        printf("Can not connect features\n");
+    }
+\endcode
+
+After all we correctly close the network which frees the allocated resources.
+
+\code
+    GNMManager::GdalCloseNetwork(poNet);
+}
+\endcode
+
+\section gnm_tut_analyse Analysing networks
+
+In the second example we will analyse the network which we have built in the first example. We will calculate the shortest path between two points via Dijkstra algorithm performing the blockings and saving the resulting path into the file.
+
+Initially we open our network, passing the path to its Shapefile dataset.
+
+\code
+#include "gnm.h"
+#include "analysis/gnmstdanalysis.h"
+
+int main ()
+{
+    GDALAllRegister();
+
+    GNMGdalNetwork *poNet;
+    poNet = GNMManager::GdalOpenNetwork("..\\network_data");
+    if (poNet == NULL)
+    {
+        printf("Failed to open network\n");
+        exit(1);
+    }
+\endcode
+
+Before any calculations we open the dataset which will hold the layer with the resulting path. 
+
+\code
+    GDALDataset *poResDS;
+    poResDS = (GDALDataset*) GDALOpenEx("..\\out_data",
+                                        GDAL_OF_VECTOR | GDAL_OF_UPDATE,
+                                        NULL, NULL, NULL);
+    if (poResDS == NULL)
+    {
+        printf("Failed to open resulting dataset\n");
+        exit(1);
+    }
+\endcode
+
+Firstly we prepare the graph for calculations, passing the opened network as parameter. This method reads the connections and builds the inner graph representation which will be effectively routed by the algorithm.
+
+\code
+    GNMGdalStdRoutingAnalyser *poRout = new GNMGdalStdRoutingAnalyser();
+    if (poRout->PrepareGraph(poNet) != GNMERR_NONE)
+    {
+        printf("Failed to prepare graph");
+        exit(1);
+    }
+\endcode
+
+Than we block some feature in order to show that the algorithm will regard such feature "closed" during the searching of the shortest path (this way the moving restrictions in road networks or commutation analysis in engineering networks can be performed). Note that the blocking state of features is saved to special layer which was created during the preparing of graph and the next time you open and analyse this network this feature will be still blocked. To unblock it use UnblockFeature() or UnblockAllFeatures() methods.
+
+\code
+    poRout->BlockFeature(36);
+\endcode
+
+And finally we use the DijkstraShortestPath() method to calculate the shortest path. This path will be found passing over the blocked feature and saved into the internal layer, which we copy to the real dataset. Now it can be visualized by GIS. If we had not wanted to save the path into the layer we could use the basic algorithm: GNMStdAnalyser:: DijkstraShortestPathTree() which returns the series of GFIDs of the shortest tree.
+
+\code
+    OGRLayer *poResLayer = poRout->DijkstraShortestPath(64, 41);
+    if (poResLayer == NULL)
+    {
+        printf("Failed to save or calculate path\n");
+    }
+    else if (poResDS->CopyLayer(poResLayer, "shp_tutorial.shp") == NULL)
+    {
+        printf("Failed to save path to the layer\n");
+    }
+    else
+    {
+        printf("Path saved successfully\n");
+    }
+
+    GDALClose(poResDS);
+    delete poRout;
+    GNMManager::GdalCloseNetwork(poNet);
+}
+\endcode
+
+\section gnm_tut_general General approach
+
+More general approach to use GNM is the following:
+
+1) Include gnm_frmts.h;
+2) Open or create a dataset;
+3) Pass it to the GNMManager method in order to open or create connectivity on this dataset, selecting to use the native network format or not;
+4) Use returned GNMNetwork to manage the resulting network via common interface. The concrete GNM_X_Network will "lie under" this interface and work with network in native or GDAL format.
+*/

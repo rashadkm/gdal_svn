@@ -44,6 +44,8 @@ char** papszLayers = NULL;
 const char  *pszSQLStatement = NULL;
 const char  *pszDialect = NULL;
 int nLoops = 1;
+int     bFullSpatialFilter = FALSE;
+char  **papszOpenOptions = NULL;
 
 typedef struct
 {
@@ -113,6 +115,13 @@ int main( int nArgc, char ** papszArgv )
         {
             nLoops = atoi(papszArgv[++iArg]);
         }
+        else if( EQUAL(papszArgv[iArg],"-fsf") )
+            bFullSpatialFilter = TRUE;
+        else if( EQUAL(papszArgv[iArg], "-oo") && iArg + 1 < nArgc)
+        {
+            papszOpenOptions = CSLAddString( papszOpenOptions,
+                                                papszArgv[++iArg] );
+        }
         else if( papszArgv[iArg][0] == '-' )
         {
             Usage();
@@ -158,6 +167,7 @@ int main( int nArgc, char ** papszArgv )
 
     CSLDestroy(papszLayers);
     CSLDestroy(papszArgv);
+    CSLDestroy(papszOpenOptions);
     
 #ifdef DBMALLOC
     malloc_dump(1);
@@ -196,10 +206,13 @@ static void ThreadFunctionInternal( ThreadContext* psContext )
     GDALDataset        *poDS;
     GDALDriver         *poDriver;
 
-    poDS = (GDALDataset*) OGROpen( pszDataSource, !bReadOnly, NULL );
+    poDS = (GDALDataset*) GDALOpenEx( pszDataSource,
+            (!bReadOnly ? GDAL_OF_UPDATE : GDAL_OF_READONLY) | GDAL_OF_VECTOR,
+            NULL, papszOpenOptions, NULL );
     if( poDS == NULL && !bReadOnly )
     {
-        poDS = (GDALDataset*) OGROpen( pszDataSource, FALSE, NULL );
+        poDS = (GDALDataset*) GDALOpenEx( pszDataSource, GDAL_OF_VECTOR,
+                                          NULL, papszOpenOptions, NULL );
         if( poDS != NULL && bVerbose )
         {
             printf( "Had to open data source read-only.\n" );
@@ -371,8 +384,11 @@ static void ThreadFunctionInternal( ThreadContext* psContext )
 static void Usage()
 
 {
-    printf( "Usage: test_ogrsf [-ro] [-q] [-threads N] [-loops M] datasource_name \n"
-            "                  [[layer1_name, layer2_name, ...] | [-sql statement] [-dialect dialect]]\n" );
+    printf( "Usage: test_ogrsf [-ro] [-q] [-threads N] [-loops M] [-fsf] datasource_name \n"
+            "                  [[layer1_name, layer2_name, ...] | [-sql statement] [-dialect dialect]]\n"
+            "                   [[-oo NAME=VALUE] ...]\n");
+    printf( "\n");
+    printf( "-fsf : full spatial filter testing (slow)\n");
     exit( 1 );
 }
 
@@ -400,7 +416,7 @@ static int TestBasic( OGRLayer *poLayer )
     if( strcmp(pszLayerName, poLayer->GetDescription()) != 0 )
     {
         bRet = FALSE;
-        printf( "ERROR: poLayer->GetName() and poLayer->GetName() differ.\n"
+        printf( "ERROR: poLayer->GetName() and poLayer->GetDescription() differ.\n"
                 "poLayer->GetName() = %s\n"
                 "poLayer->GetDescription() = %s\n",
                     pszLayerName, poLayer->GetDescription());
@@ -796,6 +812,23 @@ static int TestOGRLayerRandomRead( OGRLayer *poLayer )
 /* -------------------------------------------------------------------- */
     poFeature = poLayer->GetFeature( papoFeatures[4]->GetFID() );
     if( poFeature == NULL || !poFeature->Equal( papoFeatures[4] ) )
+    {
+        bRet = FALSE;
+        printf( "ERROR: Attempt to randomly read feature %ld appears to\n"
+                "       have returned a different feature than sequential\n"
+                "       reading indicates should have happened.\n",
+                papoFeatures[4]->GetFID() );
+
+        goto end;
+    }
+
+    OGRFeature::DestroyFeature(poFeature);
+
+/* -------------------------------------------------------------------- */
+/*      Test feature 2 again                                            */
+/* -------------------------------------------------------------------- */
+    poFeature = poLayer->GetFeature( papoFeatures[2]->GetFID() );
+    if( poFeature == NULL || !poFeature->Equal( papoFeatures[2] ) )
     {
         bRet = FALSE;
         printf( "ERROR: Attempt to randomly read feature %ld appears to\n"
@@ -1213,7 +1246,7 @@ static int TestSpatialFilter( OGRLayer *poLayer, int iGeomField )
     poLayer->SetSpatialFilter( iGeomField, &oExclusiveFilter );
 
 /* -------------------------------------------------------------------- */
-/*      Verify that we can find the target feature.                     */
+/*      Verify that we can NOT find the target feature.                 */
 /* -------------------------------------------------------------------- */
     poLayer->ResetReading();
 
@@ -1374,6 +1407,106 @@ static int TestSpatialFilter( OGRLayer *poLayer, int iGeomField )
     return bRet;
 }
 
+static int TestFullSpatialFilter( OGRLayer *poLayer, int iGeomField )
+
+{
+    int bRet = TRUE;
+
+    OGREnvelope sLayerExtent;
+    double epsilon = 10.0;
+    if( poLayer->TestCapability( OLCFastGetExtent ) &&
+        poLayer->GetExtent(iGeomField, &sLayerExtent) == OGRERR_NONE &&
+        sLayerExtent.MinX < sLayerExtent.MaxX &&
+        sLayerExtent.MinY < sLayerExtent.MaxY )
+    {
+        epsilon = MIN( sLayerExtent.MaxX - sLayerExtent.MinX, sLayerExtent.MaxY - sLayerExtent.MinY ) / 10.0;
+    }
+
+    int         nTotalFeatureCount = poLayer->GetFeatureCount();
+    for(int i=0; i<nTotalFeatureCount;i++ )
+    {
+        OGRFeature  *poFeature, *poTargetFeature;
+        OGRPolygon  oInclusiveFilter;
+        OGRLinearRing oRing;
+        OGREnvelope sEnvelope;
+
+    /* -------------------------------------------------------------------- */
+    /*      Read the target feature.                                        */
+    /* -------------------------------------------------------------------- */
+        poLayer->SetSpatialFilter( NULL );
+        poLayer->ResetReading();
+        poLayer->SetNextByIndex(i);
+        poTargetFeature = poLayer->GetNextFeature();
+
+        if( poTargetFeature == NULL )
+        {
+            continue;
+        }
+
+        OGRGeometry* poGeom = poTargetFeature->GetGeomFieldRef(iGeomField);
+        if( poGeom == NULL || poGeom->IsEmpty() )
+        {
+            OGRFeature::DestroyFeature(poTargetFeature);
+            continue;
+        }
+
+        poGeom->getEnvelope( &sEnvelope );
+
+/* -------------------------------------------------------------------- */
+/*      Construct inclusive filter.                                     */
+/* -------------------------------------------------------------------- */
+
+        oRing.setPoint( 0, sEnvelope.MinX - 2 * epsilon, sEnvelope.MinY - 2 * epsilon );
+        oRing.setPoint( 1, sEnvelope.MinX - 2 * epsilon, sEnvelope.MaxY + 1 * epsilon );
+        oRing.setPoint( 2, sEnvelope.MaxX + 1 * epsilon, sEnvelope.MaxY + 1 * epsilon );
+        oRing.setPoint( 3, sEnvelope.MaxX + 1 * epsilon, sEnvelope.MinY - 2 * epsilon );
+        oRing.setPoint( 4, sEnvelope.MinX - 2 * epsilon, sEnvelope.MinY - 2 * epsilon );
+        
+        oInclusiveFilter.addRing( &oRing );
+
+        poLayer->SetSpatialFilter( iGeomField, &oInclusiveFilter );
+
+/* -------------------------------------------------------------------- */
+/*      Verify that we can find the target feature.                     */
+/* -------------------------------------------------------------------- */
+        poLayer->ResetReading();
+
+        while( (poFeature = poLayer->GetNextFeature()) != NULL )
+        {
+            if( poFeature->Equal(poTargetFeature) )
+            {
+                OGRFeature::DestroyFeature(poFeature);
+                break;
+            }
+            else
+                OGRFeature::DestroyFeature(poFeature);
+        }
+
+        if( poFeature == NULL )
+        {
+            bRet = FALSE;
+            printf( "ERROR: Spatial filter (%d) eliminated feature %ld unexpectedly!\n",
+                    iGeomField, poTargetFeature->GetFID());
+            OGRFeature::DestroyFeature(poTargetFeature);
+            break;
+        }
+
+        OGRFeature::DestroyFeature(poTargetFeature);
+    }
+
+/* -------------------------------------------------------------------- */
+/*     Reset spatial filter                                             */
+/* -------------------------------------------------------------------- */
+    poLayer->SetSpatialFilter( NULL );
+    
+    if( bRet && bVerbose )
+    {
+        printf( "INFO: Full spatial filter succeeded.\n");
+    }
+
+    return bRet;
+}
+
 static int TestSpatialFilter( OGRLayer *poLayer )
 {
 /* -------------------------------------------------------------------- */
@@ -1408,7 +1541,12 @@ static int TestSpatialFilter( OGRLayer *poLayer )
     int bRet = TRUE;
     int nGeomFieldCount = poLayer->GetLayerDefn()->GetGeomFieldCount();
     for( int iGeom = 0; iGeom < nGeomFieldCount; iGeom ++ )
+    {
         bRet &= TestSpatialFilter(poLayer, iGeom);
+        
+        if( bFullSpatialFilter )
+            bRet &= TestFullSpatialFilter( poLayer, iGeom );
+    }
     
     OGRPolygon oPolygon;
     CPLErrorReset();
@@ -2319,6 +2457,7 @@ static int TestLayerSQL( GDALDataset* poDS, OGRLayer * poLayer )
     {
         printf( "ERROR: ExecuteSQL(%s) failed.\n", osSQL.c_str() );
         bRet = FALSE;
+        return bRet;
     }
     else
     {
@@ -2521,19 +2660,13 @@ static int TestOGRLayer( GDALDataset* poDS, OGRLayer * poLayer, int bIsSQLLayer 
 /* -------------------------------------------------------------------- */
 /*      Test random reading.                                            */
 /* -------------------------------------------------------------------- */
-    if( poLayer->TestCapability( OLCRandomRead ) )
-    {
-        bRet &= TestOGRLayerRandomRead( poLayer );
-    }
+    bRet &= TestOGRLayerRandomRead( poLayer );
     
 /* -------------------------------------------------------------------- */
 /*      Test SetNextByIndex.                                            */
 /* -------------------------------------------------------------------- */
-    if( poLayer->TestCapability( OLCFastSetNextByIndex ) )
-    {
-        bRet &= TestOGRLayerSetNextByIndex( poLayer );
-    }
-    
+    bRet &= TestOGRLayerSetNextByIndex( poLayer );
+
 /* -------------------------------------------------------------------- */
 /*      Test delete feature.                                            */
 /* -------------------------------------------------------------------- */
@@ -2607,7 +2740,8 @@ static int TestInterleavedReading( const char* pszDataSource, char** papszLayers
     OGRFeature* poFeature22 = NULL;
 
     /* Check that we have 2 layers with at least 2 features */
-    poDS = (GDALDataset*) OGROpen( pszDataSource, FALSE, NULL );
+    poDS = (GDALDataset*) GDALOpenEx( pszDataSource,
+                            GDAL_OF_VECTOR, NULL, papszOpenOptions, NULL );
     if (poDS == NULL)
     {
         if( bVerbose )
@@ -2631,8 +2765,10 @@ static int TestInterleavedReading( const char* pszDataSource, char** papszLayers
 
     /* Test normal reading */
     GDALClose( (GDALDatasetH)poDS );
-    poDS = (GDALDataset*) OGROpen( pszDataSource, FALSE, NULL );
-    poDS2 = (GDALDataset*) OGROpen( pszDataSource, FALSE, NULL );
+    poDS = (GDALDataset*) GDALOpenEx( pszDataSource,
+                                GDAL_OF_VECTOR, NULL, papszOpenOptions, NULL );
+    poDS2 = (GDALDataset*) GDALOpenEx( pszDataSource,
+                                GDAL_OF_VECTOR, NULL, papszOpenOptions, NULL );
     if (poDS == NULL || poDS2 == NULL)
     {
         if( bVerbose )

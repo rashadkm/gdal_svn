@@ -59,7 +59,7 @@ OGRSXFLayer::OGRSXFLayer(VSILFILE* fp, void** hIOMutex, GByte nID, const char* p
     poFeatureDefn = new OGRFeatureDefn(pszLayerName);
     SetDescription( poFeatureDefn->GetName() );
     poFeatureDefn->Reference();
-
+    
     poFeatureDefn->SetGeomType(wkbUnknown);
     if (poFeatureDefn->GetGeomFieldCount() != 0)
         poFeatureDefn->GetGeomFieldDefn(0)->SetSpatialRef(stSXFMapDescription.pSpatRef);
@@ -370,7 +370,7 @@ OGRFeature *OGRSXFLayer::GetNextFeature()
     while (oNextIt != mnRecordDesc.end())
     {
         VSIFSeekL(fpSXF, oNextIt->second, SEEK_SET);
-        OGRFeature  *poFeature = GetNextRawFeature(oNextIt->first);
+        OGRFeature  *poFeature = GetNextRawFeature(oNextIt->first);	
 
         ++oNextIt;
 
@@ -386,7 +386,7 @@ OGRFeature *OGRSXFLayer::GetNextFeature()
             {
                 poFeature->GetGeometryRef()->assignSpatialReference(GetSpatialRef());
             }
-
+	    
             return poFeature;
         }
 
@@ -412,7 +412,7 @@ int OGRSXFLayer::TestCapability( const char * pszCap )
         return TRUE;
     else if (EQUAL(pszCap, OLCFastSetNextByIndex))
         return TRUE;
-
+        
     return FALSE;
 }
 
@@ -420,7 +420,7 @@ int OGRSXFLayer::TestCapability( const char * pszCap )
 /*                                TranslateXYH()                        */
 /************************************************************************/
 /****
- * TODO : Take into account informations given in the passport
+ * TODO : Take into account informations given in the passport 
  * like unit of mesurement, type and dimensions (integer, float, double) of coordinate,
  * the vector format ....
  */
@@ -431,7 +431,7 @@ GUInt32 OGRSXFLayer::TranslateXYH(const SXFRecordDescription& certifInfo,
 {
     //Xp, Yp(м) = Xo, Yo(м) + (Xd, Yd / R * S), (1)
 
-    int offset = 0;
+	int offset = 0;
     switch (certifInfo.eValType)
     {
     case SXF_VT_SHORT:
@@ -631,7 +631,7 @@ OGRFeature *OGRSXFLayer::GetNextRawFeature(long nFID)
             }
             else
             {
-                code = 0x21;
+                code = 0x21; 
                 stRecordHeader.nSubObjectCount = 0;
             }
         }
@@ -793,7 +793,7 @@ OGRFeature *OGRSXFLayer::GetNextRawFeature(long nFID)
         poFeature = TranslateVetorAngle(stCertInfo, recordCertifBuf,
             stRecordHeader.nGeometryLength);
     }
-    else if (eGeomType == SXF_GT_Vector )
+    else if (eGeomType == SXF_GT_Vector ) 
     {
       CPLError( CE_Warning, CPLE_NotSupported,
       "SXF. Geometry type Vector do not support." );
@@ -814,7 +814,7 @@ OGRFeature *OGRSXFLayer::GetNextRawFeature(long nFID)
         CPLFree(recordCertifBuf);
         return NULL;
     }
-
+    
     if( poFeature == NULL )
     {
         CPLFree(recordCertifBuf);
@@ -924,7 +924,7 @@ OGRFeature *OGRSXFLayer::GetNextRawFeature(long nFID)
                     }
                     memcpy(&nTmpVal, psSemanticsdBuf + offset, sizeof(GInt16));
                     nVal = double(CPL_LSBWORD16(nTmpVal)) * pow(10.0, (double)stAttInfo.nScale);
-
+   
                     poFeature->SetField(oFieldName, nVal);
                     offset += 2;
                     break;
@@ -1054,7 +1054,6 @@ OGRFeature *OGRSXFLayer::GetNextRawFeature(long nFID)
         }
         CPLFree(psSemanticsdBufOrig);
      }
-
     poFeature->SetFID(nFID);
 
     CPLFree(recordCertifBuf);
@@ -1088,8 +1087,8 @@ OGRFeature *OGRSXFLayer::TranslatePoint(const SXFRecordDescription& certifInfo,
         return NULL;
     nOffset += nDelta;
 
-    //OGRFeatureDefn *fd = poFeatureDefn->Clone();
-    //fd->SetGeomType( wkbMultiPoint );
+	//OGRFeatureDefn *fd = poFeatureDefn->Clone();
+	//fd->SetGeomType( wkbMultiPoint );
  //   OGRFeature *poFeature = new OGRFeature(fd);
     OGRFeature *poFeature = new OGRFeature(poFeatureDefn);
     OGRMultiPoint* poMPt = new OGRMultiPoint();
@@ -1136,8 +1135,8 @@ OGRFeature *OGRSXFLayer::TranslatePoint(const SXFRecordDescription& certifInfo,
     }
 
 /*****
- * TODO :
- *          - Translate graphics
+ * TODO : 
+ *          - Translate graphics 
  *          - Translate 3D vector
  */
 
@@ -1240,8 +1239,8 @@ OGRFeature *OGRSXFLayer::TranslateLine(const SXFRecordDescription& certifInfo,
     poFeature->SetGeometryDirectly( poMLS );
 
 /*****
- * TODO :
- *          - Translate graphics
+ * TODO : 
+ *          - Translate graphics 
  *          - Translate 3D vector
  */
 
@@ -1411,8 +1410,8 @@ OGRFeature *OGRSXFLayer::TranslatePolygon(const SXFRecordDescription& certifInfo
     delete poLS;
 
 /*****
- * TODO :
- *          - Translate graphics
+ * TODO : 
+ *          - Translate graphics 
  *          - Translate 3D vector
  */
     return poFeature;
@@ -1430,6 +1429,7 @@ OGRFeature *OGRSXFLayer::TranslateText(const SXFRecordDescription& certifInfo,
     GUInt32 nOffset = 0;
     GUInt32 count;
     GUInt32 nDelta = 0;
+
 	//OGRFeatureDefn *fd = poFeatureDefn->Clone();
 	//fd->SetGeomType( wkbLineString );
  //   OGRFeature *poFeature = new OGRFeature(fd);

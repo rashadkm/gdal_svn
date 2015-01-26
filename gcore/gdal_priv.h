@@ -315,6 +315,8 @@ class CPL_DLL GDALDataset : public GDALMajorObject
     virtual int         CloseDependentDatasets();
     
     int                 ValidateLayerCreationOptions( const char* const* papszLCO );
+    
+    char            **papszOpenOptions;
 
     friend class GDALRasterBand;
     
@@ -376,6 +378,8 @@ class CPL_DLL GDALDataset : public GDALMajorObject
 
     int           GetShared();
     void          MarkAsShared();
+    
+    char        **GetOpenOptions() { return papszOpenOptions; }
 
     static GDALDataset **GetOpenDatasets( int *pnDatasetCount );
 
@@ -576,9 +580,12 @@ class CPL_DLL GDALRasterBand : public GDALMajorObject
     GDALRasterBand *poMask;
     bool        bOwnMask;
     int         nMaskFlags;
+    
+    void        InvalidateMaskBand();
 
     friend class GDALDataset;
     friend class GDALProxyRasterBand;
+    friend class GDALDefaultOverviews;
 
   protected:
     virtual CPLErr IReadBlock( int, int, void * ) = 0;
@@ -746,6 +753,27 @@ class CPL_DLL GDALNoDataValuesMaskBand : public GDALRasterBand
   public:
                 GDALNoDataValuesMaskBand( GDALDataset * );
     virtual     ~GDALNoDataValuesMaskBand();
+};
+
+/* ******************************************************************** */
+/*                         GDALRescaledAlphaBand                        */
+/* ******************************************************************** */
+
+class GDALRescaledAlphaBand : public GDALRasterBand
+{
+    double          dfNoDataValue;
+    GDALRasterBand *poParent;
+    void           *pTemp;
+
+  protected:
+    virtual CPLErr IReadBlock( int, int, void * );
+    virtual CPLErr IRasterIO( GDALRWFlag, int, int, int, int,
+                              void *, int, int, GDALDataType,
+                              int, int );
+
+  public:
+                GDALRescaledAlphaBand( GDALRasterBand * );
+    virtual     ~GDALRescaledAlphaBand();
 };
 
 /* ******************************************************************** */
@@ -1052,6 +1080,10 @@ int GDALValidateOptions( const char* pszOptionList,
                          const char* pszErrorMessageOptionType,
                          const char* pszErrorMessageContainerName);
 
+/* CPL_DLL exported, but only for gdalwarp */
+GDALDataset CPL_DLL* GDALCreateOverviewDataset(GDALDataset* poDS, int nOvrLevel,
+                                               int bThisLevelOnly, int bOwnDS);
+
 #define DIV_ROUND_UP(a, b) ( ((a) % (b)) == 0 ? ((a) / (b)) : (((a) / (b)) + 1) )
 
 // Number of data samples that will be used to compute approximate statistics
@@ -1070,5 +1102,8 @@ void GDALDeserializeGCPListFromXML( CPLXMLNode* psGCPList,
                                     int* pnGCPCount,
                                     char** ppszGCPProjection );
 CPL_C_END
+
+void GDALSerializeOpenOptionsToXML( CPLXMLNode* psParentNode, char** papszOpenOptions);
+char** GDALDeserializeOpenOptionsFromXML( CPLXMLNode* psParentNode );
 
 #endif /* ndef GDAL_PRIV_H_INCLUDED */

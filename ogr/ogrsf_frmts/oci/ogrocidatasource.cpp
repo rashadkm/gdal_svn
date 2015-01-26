@@ -244,7 +244,7 @@ int OGROCIDataSource::OpenTable( const char *pszNewName,
 /* -------------------------------------------------------------------- */
     OGROCITableLayer    *poLayer;
 
-    poLayer = new OGROCITableLayer( this, pszNewName, nSRID, 
+    poLayer = new OGROCITableLayer( this, pszNewName, wkbUnknown, nSRID, 
                                     bUpdate, FALSE );
 
     if( !poLayer->IsValid() )
@@ -411,7 +411,6 @@ void OGROCIDataSource::DeleteLayer( const char *pszLayerName )
     {
         if( EQUAL(pszLayerName,papoLayers[iLayer]->GetLayerDefn()->GetName()) )
         {
-            pszLayerName = CPLStrdup(papoLayers[iLayer]->GetLayerDefn()->GetName());
             break;
         }
     }
@@ -570,7 +569,7 @@ OGROCIDataSource::ICreateLayer( const char * pszLayerName,
     OGROCIWritableLayer *poLayer;
 
     if( pszLoaderFile == NULL )
-        poLayer = new OGROCITableLayer( this, pszSafeLayerName, 
+        poLayer = new OGROCITableLayer( this, pszSafeLayerName, eType,
                                         EQUAL(szSRSId,"NULL") ? -1 : atoi(szSRSId),
                                         TRUE, TRUE );
     else

@@ -192,6 +192,12 @@ if(GDAL_USE_ODBC)
 	set(LIB_CSOURCES ${LIB_CSOURCES}
 		cpl_odbc.cpp  
 	)
+    
+    if(WIN32)
+        set(GDAL_TARGET_LINK_LIB ${GDAL_TARGET_LINK_LIB} odbc32.lib odbcbcp.lib odbccp32.lib)
+    else(WIN32)
+    endif(WIN32)
+    
 endif(GDAL_USE_ODBC)
 
 option(GDAL_USE_XMLREFORMAT "Set ON to use xmlreformat" OFF)

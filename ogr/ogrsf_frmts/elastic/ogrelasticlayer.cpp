@@ -41,11 +41,11 @@ CPL_CVSID("$Id$");
 /*                           OGRElasticLayer()                          */
 /************************************************************************/
 
-OGRElasticLayer::OGRElasticLayer(const char* pszFilename,
-        const char* pszLayerName,
-        OGRElasticDataSource* poDS,
-        OGRSpatialReference *poSRSIn,
-        int bWriteMode) {
+OGRElasticLayer::OGRElasticLayer(CPL_UNUSED const char* pszFilename,
+                                 const char* pszLayerName,
+                                 OGRElasticDataSource* poDS,
+                                 OGRSpatialReference *poSRSIn,
+                                 CPL_UNUSED int bWriteMode) {
     this->pszLayerName = CPLStrdup(pszLayerName);
     this->poDS = poDS;
     this->pAttributes = NULL;
@@ -286,7 +286,8 @@ void OGRElasticLayer::PushIndex() {
 /*                            CreateField()                             */
 /************************************************************************/
 
-OGRErr OGRElasticLayer::CreateField(OGRFieldDefn *poFieldDefn, int bApproxOK) {
+OGRErr OGRElasticLayer::CreateField(OGRFieldDefn *poFieldDefn,
+                                    CPL_UNUSED int bApproxOK) {
     if (!pAttributes) {
         pAttributes = json_object_new_object();
     }
@@ -338,6 +339,8 @@ int OGRElasticLayer::TestCapability(const char * pszCap) {
 
     else if (EQUAL(pszCap, OLCSequentialWrite))
         return TRUE;
+    else if (EQUAL(pszCap, OLCCreateField))
+        return TRUE;
     else
         return FALSE;
 }
@@ -346,7 +349,7 @@ int OGRElasticLayer::TestCapability(const char * pszCap) {
 /*                          GetFeatureCount()                           */
 /************************************************************************/
 
-int OGRElasticLayer::GetFeatureCount(int bForce) {
+int OGRElasticLayer::GetFeatureCount(CPL_UNUSED int bForce) {
     CPLError(CE_Failure, CPLE_NotSupported,
             "Cannot read features when writing a Elastic file");
     return 0;

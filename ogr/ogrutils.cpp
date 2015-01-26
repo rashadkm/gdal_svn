@@ -540,6 +540,7 @@ int OGRGeneralCmdLineProcessor( int nArgc, char ***ppapszArgv, int nOptions )
  * speaking this function is expecting values like:
  * 
  *   YYYY-MM-DD HH:MM:SS+nn
+ *   or YYYY-MM-DDTHH:MM:SSZ (ISO 8601 format)
  *
  * The seconds may also have a decimal portion (which is ignored).  And
  * just dates (YYYY-MM-DD) or just times (HH:MM:SS) are also supported. 
@@ -551,17 +552,18 @@ int OGRGeneralCmdLineProcessor( int nArgc, char ***ppapszArgv, int nOptions )
  * a reasonable default form of processing.
  *
  * The value of psField will be indeterminate if the function fails (returns
- * FALSE).  
+ * FALSE).
  *
  * @param pszInput the input date string.
  * @param psField the OGRField that will be updated with the parsed result.
- * @param nOptions parsing options, for now always 0. 
+ * @param nOptions parsing options, for now always 0.
  *
  * @return TRUE if apparently successful or FALSE on failure.
  */
 
-int OGRParseDate( const char *pszInput, OGRField *psField, int nOptions )
-
+int OGRParseDate( const char *pszInput,
+                  OGRField *psField,
+                  CPL_UNUSED int nOptions )
 {
     int bGotSomething = FALSE;
 
@@ -572,7 +574,7 @@ int OGRParseDate( const char *pszInput, OGRField *psField, int nOptions )
     psField->Date.Minute = 0;
     psField->Date.Second = 0;
     psField->Date.TZFlag = 0;
-    
+
 /* -------------------------------------------------------------------- */
 /*      Do we have a date?                                              */
 /* -------------------------------------------------------------------- */
@@ -620,6 +622,10 @@ int OGRParseDate( const char *pszInput, OGRField *psField, int nOptions )
             pszInput++;
 
         bGotSomething = TRUE;
+        
+        /* If ISO 8601 format */
+        if( *pszInput == 'T' )
+            pszInput ++;
     }
 
 /* -------------------------------------------------------------------- */
@@ -659,6 +665,12 @@ int OGRParseDate( const char *pszInput, OGRField *psField, int nOptions )
         while( (*pszInput >= '0' && *pszInput <= '9')
                || *pszInput == '.' )
             pszInput++;
+
+        /* If ISO 8601 format */
+        if( *pszInput == 'Z' )
+        {
+            psField->Date.TZFlag = 100;
+        }
 
         bGotSomething = TRUE;
     }

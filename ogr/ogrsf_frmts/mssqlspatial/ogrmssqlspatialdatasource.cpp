@@ -63,13 +63,13 @@ OGRMSSQLSpatialDataSource::~OGRMSSQLSpatialDataSource()
 {
     int         i;
 
-    CPLFree( pszName );
-    CPLFree( pszCatalog );
-
     for( i = 0; i < nLayers; i++ )
         delete papoLayers[i];
     
     CPLFree( papoLayers );
+
+    CPLFree( pszName );
+    CPLFree( pszCatalog );
 
     for( i = 0; i < nKnownSRID; i++ )
     {
@@ -406,6 +406,19 @@ OGRLayer * OGRMSSQLSpatialDataSource::ICreateLayer( const char * pszLayerName,
     poLayer->SetLaunderFlag( CSLFetchBoolean(papszOptions,"LAUNDER",TRUE) );
     poLayer->SetPrecisionFlag( CSLFetchBoolean(papszOptions,"PRECISION",TRUE));
 
+    const char *pszSI = CSLFetchNameValue( papszOptions, "SPATIAL_INDEX" );
+    int bCreateSpatialIndex = ( pszSI == NULL || CSLTestBoolean(pszSI) );
+    poLayer->SetSpatialIndexFlag( bCreateSpatialIndex );
+
+    const char *pszUploadGeometryFormat = CSLFetchNameValue( papszOptions, "UPLOAD_GEOM_FORMAT" );
+    if (pszUploadGeometryFormat)
+    {
+        if (EQUALN(pszUploadGeometryFormat,"wkb",5))
+            poLayer->SetUploadGeometryFormat(MSSQLGEOMETRY_WKB);
+        else if (EQUALN(pszUploadGeometryFormat, "wkt",3))
+            poLayer->SetUploadGeometryFormat(MSSQLGEOMETRY_WKT);
+    }
+
     char *pszWKT = NULL;
     if( poSRS && poSRS->exportToWkt( &pszWKT ) != OGRERR_NONE )
     {
@@ -441,10 +454,10 @@ OGRLayer * OGRMSSQLSpatialDataSource::ICreateLayer( const char * pszLayerName,
 /*                             OpenTable()                              */
 /************************************************************************/
 
-int OGRMSSQLSpatialDataSource::OpenTable( const char *pszSchemaName, const char *pszTableName, 
-                    const char *pszGeomCol, int nCoordDimension,
-                    int nSRID, const char *pszSRText, OGRwkbGeometryType eType, int bUpdate )
-
+int OGRMSSQLSpatialDataSource::OpenTable( const char *pszSchemaName, const char *pszTableName,
+                                          const char *pszGeomCol, int nCoordDimension,
+                                          int nSRID, const char *pszSRText, OGRwkbGeometryType eType,
+                                          CPL_UNUSED int bUpdate )
 {
 /* -------------------------------------------------------------------- */
 /*      Create the layer object.                                        */
@@ -1278,4 +1291,3 @@ int OGRMSSQLSpatialDataSource::FetchSRSId( OGRSpatialReference * poSRS)
 
     return nSRSId;
 }
-

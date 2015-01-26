@@ -803,19 +803,18 @@ int OGRDGNLayer::GetFeatureCount( int bForce )
 /*                             GetExtent()                              */
 /************************************************************************/
 
-OGRErr OGRDGNLayer::GetExtent( OGREnvelope *psExtent, int bForce )
-
+OGRErr OGRDGNLayer::GetExtent( OGREnvelope *psExtent, CPL_UNUSED int bForce )
 {
     double      adfExtents[6];
 
     if( !DGNGetExtents( hDGN, adfExtents ) )
         return OGRERR_FAILURE;
-    
+
     psExtent->MinX = adfExtents[0];
     psExtent->MinY = adfExtents[1];
     psExtent->MaxX = adfExtents[3];
     psExtent->MaxY = adfExtents[4];
-    
+
     return OGRERR_NONE;
 }
 
@@ -1144,7 +1143,7 @@ OGRErr OGRDGNLayer::CreateFeatureWithGeom( OGRFeature *poFeature,
     nColor = MAX(0,MIN(255,nColor));
     nWeight = MAX(0,MIN(31,nWeight));
     nStyle = MAX(0,MIN(7,nStyle));
-    nMSLink = MAX(0,MIN(4294967295,nMSLink));
+    nMSLink = MAX(0,nMSLink);
 
     DGNUpdateElemCore( hDGN, papsGroup[0], nLevel, nGraphicGroup, nColor, 
                        nWeight, nStyle );

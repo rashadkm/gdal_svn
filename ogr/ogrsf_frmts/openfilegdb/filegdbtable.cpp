@@ -113,6 +113,7 @@ void FileGDBTable::Init()
     bHasReadGDBIndexes = FALSE;
     nOffsetFieldDesc = 0;
     nFieldDescLength = 0;
+    nTablxOffsetSize = 0;
     anFeatureOffsets.resize(0);
     nOffsetHeaderEnd = 0;
 }
@@ -265,8 +266,8 @@ static void ReadVarUInt64NoCheck(GByte*& pabyIter, GUIntBig& nOutVal)
 /*                      IsLikelyFeatureAtOffset()                       */
 /************************************************************************/
 
-int FileGDBTable::IsLikelyFeatureAtOffset(GUInt32 nFileSize,
-                                          GUInt32 nOffset,
+int FileGDBTable::IsLikelyFeatureAtOffset(vsi_l_offset nFileSize,
+                                          vsi_l_offset nOffset,
                                           GUInt32* pnSize,
                                           int* pbDeletedRecord)
 {
@@ -446,11 +447,11 @@ int FileGDBTable::IsLikelyFeatureAtOffset(GUInt32 nFileSize,
 
 int FileGDBTable::GuessFeatureLocations()
 {
-    GUInt32 nFileSize;
+    vsi_l_offset nFileSize;
     VSIFSeekL(fpTable, 0, SEEK_END);
-    nFileSize = (GUInt32) MIN(~((GUInt32)0), VSIFTellL(fpTable));
+    nFileSize = VSIFTellL(fpTable);
 
-    GUInt32 nOffset = 40 + nFieldDescLength;
+    vsi_l_offset nOffset = 40 + nFieldDescLength;
     
     if( nOffsetFieldDesc != 40 )
     {
@@ -529,11 +530,14 @@ int FileGDBTable::ReadTableXHeader()
     else
         returnErrorIf(nTotalRecordCount < 0 );
 
+    nTablxOffsetSize = GetUInt32(abyHeader + 12, 0);
+    returnErrorIf(nTablxOffsetSize < 4 || nTablxOffsetSize > 6);
+
     if( n1024Blocks != 0 )
     {
         GByte abyTrailer[16];
 
-        VSIFSeekL( fpTableX, 5 * 1024 * (vsi_l_offset)n1024Blocks + 16, SEEK_SET );
+        VSIFSeekL( fpTableX, nTablxOffsetSize * 1024 * (vsi_l_offset)n1024Blocks + 16, SEEK_SET );
         returnErrorIf(VSIFReadL( abyTrailer, 16, 1, fpTableX ) != 1 );
 
         GUInt32 nMagic = GetUInt32(abyTrailer, 0);
@@ -546,7 +550,6 @@ int FileGDBTable::ReadTableXHeader()
 
         /* GUInt32 nMagic2 = GetUInt32(abyTrailer + 12, 0); */
 
-        returnErrorIf(nMagic != 0 && nMagic != 32 );
         if( nMagic == 0 )
         {
             returnErrorIf(nBitsForBlockMap != n1024Blocks );
@@ -653,7 +656,7 @@ int FileGDBTable::Open(const char* pszFilename)
 
     nOffsetHeaderEnd = nOffsetFieldDesc + nFieldDescLength;
 
-    returnErrorIf(nFieldDescLength > 1024 * 1024 || nFieldDescLength < 10 );
+    returnErrorIf(nFieldDescLength > 10 * 1024 * 1024 || nFieldDescLength < 10 );
     GByte byTableGeomType = abyHeader[8];
     if( IS_VALID_LAYER_GEOM_TYPE(byTableGeomType) )
         eTableGeomType = (FileGDBTableGeometryType) byTableGeomType;
@@ -713,19 +716,23 @@ int FileGDBTable::Open(const char* pszFilename)
         {
             GByte flags = 0;
             int nMaxWidth = 0;
-            GByte defaultValueLength = 0;
+            GUInt32 defaultValueLength = 0;
 
             switch( eType )
             {
                 case FGFT_STRING:
+                {
                     returnErrorIf(nRemaining < 6 );
                     nMaxWidth = GetInt32(pabyIter, 0);
                     returnErrorIf(nMaxWidth < 0);
                     flags = pabyIter[4];
-                    defaultValueLength = pabyIter[5];
-                    pabyIter += 6;
-                    nRemaining -= 6;
+                    pabyIter += 5;
+                    nRemaining -= 5;
+                    GByte* pabyIterBefore = pabyIter;
+                    returnErrorIf(!ReadVarUInt32(pabyIter, pabyIter + nRemaining, defaultValueLength));
+                    nRemaining -= (pabyIter - pabyIterBefore);
                     break;
+                }
 
                 case FGFT_OBJECTID:
                 case FGFT_BINARY:
@@ -831,40 +838,44 @@ int FileGDBTable::Open(const char* pszFilename)
             nRemaining --;
             poField->bHasM = (abyGeomFlags & 2) != 0;
             poField->bHasZ = (abyGeomFlags & 4) != 0;
-            returnErrorIf(
-                    nRemaining < (GUInt32)(sizeof(double) * ( 8 + (poField->bHasM + poField->bHasZ) * 3 )) );
 
-#define READ_DOUBLE(field) do { \
-    field = GetFloat64(pabyIter, 0); \
-    pabyIter += sizeof(double); \
-    nRemaining -= sizeof(double); } while(0)
-
-            READ_DOUBLE(poField->dfXOrigin);
-            READ_DOUBLE(poField->dfYOrigin);
-            READ_DOUBLE(poField->dfXYScale);
-
-            if( poField->bHasM )
+            if( eType == FGFT_GEOMETRY || abyGeomFlags > 0 )
             {
-                READ_DOUBLE(poField->dfMOrigin);
-                READ_DOUBLE(poField->dfMScale);
-            }
+                returnErrorIf(
+                        nRemaining < (GUInt32)(sizeof(double) * ( 4 + (( eType == FGFT_GEOMETRY ) ? 4 : 0) + (poField->bHasM + poField->bHasZ) * 3 )) );
 
-            if( poField->bHasZ )
-            {
-                READ_DOUBLE(poField->dfZOrigin);
-                READ_DOUBLE(poField->dfZScale);
-            }
+    #define READ_DOUBLE(field) do { \
+        field = GetFloat64(pabyIter, 0); \
+        pabyIter += sizeof(double); \
+        nRemaining -= sizeof(double); } while(0)
 
-            READ_DOUBLE(poField->dfXYTolerance);
+                READ_DOUBLE(poField->dfXOrigin);
+                READ_DOUBLE(poField->dfYOrigin);
+                READ_DOUBLE(poField->dfXYScale);
 
-            if( poField->bHasM )
-            {
-                READ_DOUBLE(poField->dfMTolerance);
-            }
+                if( poField->bHasM )
+                {
+                    READ_DOUBLE(poField->dfMOrigin);
+                    READ_DOUBLE(poField->dfMScale);
+                }
 
-            if( poField->bHasZ )
-            {
-                READ_DOUBLE(poField->dfZTolerance);
+                if( poField->bHasZ )
+                {
+                    READ_DOUBLE(poField->dfZOrigin);
+                    READ_DOUBLE(poField->dfZScale);
+                }
+
+                READ_DOUBLE(poField->dfXYTolerance);
+
+                if( poField->bHasM )
+                {
+                    READ_DOUBLE(poField->dfMTolerance);
+                }
+
+                if( poField->bHasZ )
+                {
+                    READ_DOUBLE(poField->dfZTolerance);
+                }
             }
 
             if( eType == FGFT_RASTER )
@@ -990,7 +1001,7 @@ static void ReadVarIntAndAddNoCheck(GByte*& pabyIter, GIntBig& nOutVal)
 /*                       GetOffsetInTableForRow()                       */
 /************************************************************************/
 
-GUInt32 FileGDBTable::GetOffsetInTableForRow(int iRow)
+vsi_l_offset FileGDBTable::GetOffsetInTableForRow(int iRow)
 {
     const int errorRetValue = 0;
     returnErrorIf(iRow < 0 || iRow >= nTotalRecordCount );
@@ -1010,22 +1021,29 @@ GUInt32 FileGDBTable::GetOffsetInTableForRow(int iRow)
         for(int i=0;i<iBlock;i++)
             nCountBlocksBefore += TEST_BIT(pabyTablXBlockMap, i) != 0;
         int iCorrectedRow = nCountBlocksBefore * 1024 + (iRow % 1024);
-        VSIFSeekL(fpTableX, 16 + 5 * iCorrectedRow, SEEK_SET);
+        VSIFSeekL(fpTableX, 16 + nTablxOffsetSize * iCorrectedRow, SEEK_SET);
     }
     else
     {
-        VSIFSeekL(fpTableX, 16 + 5 * iRow, SEEK_SET);
+        VSIFSeekL(fpTableX, 16 + nTablxOffsetSize * iRow, SEEK_SET);
     }
 
-    GByte abyBuffer[4];
-    bError = VSIFReadL(abyBuffer, 4, 1, fpTableX) != 1;
+    GByte abyBuffer[6];
+    bError = VSIFReadL(abyBuffer, nTablxOffsetSize, 1, fpTableX) != 1;
     returnErrorIf(bError );
-    GUInt32 nOffset = GetUInt32(abyBuffer, 0);
+    vsi_l_offset nOffset;
+
+    if( nTablxOffsetSize == 4 )
+        nOffset = GetUInt32(abyBuffer, 0);
+    else if( nTablxOffsetSize == 5 )
+        nOffset = GetUInt32(abyBuffer, 0) | (((vsi_l_offset)abyBuffer[4]) << 32);
+    else
+        nOffset = GetUInt32(abyBuffer, 0) | (((vsi_l_offset)abyBuffer[4]) << 32) | (((vsi_l_offset)abyBuffer[5]) << 40);
 
 #ifdef DEBUG_VERBOSE
     if( iRow == 0 && nOffset != 0 &&
         nOffset != nOffsetHeaderEnd && nOffset != nOffsetHeaderEnd + 4 )
-        CPLDebug("OpenFileGDB", "%s: first feature offset = %d. Expected %d",
+        CPLDebug("OpenFileGDB", "%s: first feature offset = " CPL_FRMT_GUIB ". Expected %d",
                  osFilename.c_str(), nOffset, nOffsetHeaderEnd);
 #endif
 
@@ -1043,7 +1061,7 @@ int FileGDBTable::SelectRow(int iRow)
 
     if( nCurRow != iRow )
     {
-        GUInt32 nOffsetTable = GetOffsetInTableForRow(iRow);
+        vsi_l_offset nOffsetTable = GetOffsetInTableForRow(iRow);
         if( nOffsetTable == 0 )
         {
             nCurRow = -1;
@@ -1639,8 +1657,13 @@ int FileGDBTable::GetFeatureExtent(const OGRField* psField,
             nToSkip = 1;
             break;
         }
-
         case SHPT_GENERALPOLYLINE:
+        case SHPT_GENERALPOLYGON:
+        {
+            nToSkip = 1 + ((nGeomType & 0x20000000) ? 1 : 0);
+            break;
+        }
+
         case SHPT_GENERALMULTIPATCH:
         case SHPT_MULTIPATCHM:
         case SHPT_MULTIPATCH:
