@@ -73,6 +73,7 @@ configure_file(${CMAKE_MODULE_PATH}/cmake_uninstall.cmake.in ${CMAKE_CURRENT_BIN
 include(configure)
 
 option(GDAL_USE_CPL "Set ON to use cpl" ON)
+option(GDAL_USE_SSE "Set ON to use sse" OFF)
 
 option(GDAL_ENABLE_OGR "Build OGR module" ON)
 if(GDAL_ENABLE_OGR)
