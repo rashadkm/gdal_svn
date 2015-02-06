@@ -602,6 +602,8 @@ int main( int nArgc, char ** papszArgv )
 				layersToConnect.push_back(poDS->GetLayer(i));
             }
             //layers[cnt] = NULL;
+			//layersToConnect.push_back(poDS->GetLayerByName("gnm_train_lines_line"));
+			//layersToConnect.push_back(poDS->GetLayerByName("gnm_platforms_point"));
 
             //GNMErr err = poNet->AutoConnect(layers,tol,NULL);
 			GNMErr err = poNet->AutoConnect(layersToConnect,tol,NULL);

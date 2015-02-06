@@ -229,7 +229,7 @@ GNMErr GNMNetwork::AutoConnect (std::vector<OGRLayer*> vLayers,
 		OGRLayer *lineLayer = lineLayers[i];
         lineLayer->ResetReading();
         OGRFeature *lineFeature;
-        while((lineFeature = lineLayer->GetNextFeature()) != NULL)
+        while ((lineFeature = lineLayer->GetNextFeature()) != NULL)
 		{
 			lineFeatures.push_back(lineFeature);
 		}
