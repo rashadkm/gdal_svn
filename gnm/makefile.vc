@@ -6,7 +6,13 @@ GDAL_ROOT	=	..
 
 EXTRAFLAGS =	-I..\ogr -I..\ogr\ogrsf_frmts -I..\gcore -I..\gnm -I..\gnm\frmts
 
-default:	$(OBJ) 
+default:	$(OBJ) analysis_dir
 
+analysis_dir:
+	cd analysis
+	$(MAKE) /f makefile.vc
+	cd ..
+
+    
 clean:
 	-del *.obj

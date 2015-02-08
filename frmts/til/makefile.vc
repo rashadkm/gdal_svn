@@ -3,7 +3,7 @@ OBJ	=	tildataset.obj
 
 GDAL_ROOT	=	..\..
 
-EXTRAFLAGS 	=	-I..\vrt
+EXTRAFLAGS 	=	-I..\vrt -I..\..\gcore\rsmdreader
 
 !INCLUDE $(GDAL_ROOT)\nmake.opt
 

@@ -50,18 +50,18 @@ BASE_INCLUDE =	/INCLUDE:$(SYM_PREFIX)GDALSimpleImageWarp \
 		/INCLUDE:$(SYM_PREFIX)OCTNewCoordinateTransformation
 !ENDIF
 
-LIBOBJ = port\*.obj gcore\*.obj alg\*.obj frmts\o\*.obj $(OGR_OBJ) $(VB6_OBJ)
+LIBOBJ = port\*.obj gcore\*.obj gcore\rsmdreader\*.obj gnm\*.obj gnm\analysis\*.obj alg\*.obj frmts\o\*.obj $(OGR_OBJ) $(VB6_OBJ)
 	
 DISTDIR	=	gdal_$(VERSION)
 
 default:	port_dir ogr_dir core_dir frmts_dir $(VB6_TARGET) $(GDAL_DLL) \
-		plugin_dir apps_dir 
+		plugin_dir apps_dir gnm_dir
 
 staticlib:
 	if exist gdal.lib del gdal.lib
 	lib /nologo /out:gdal.lib $(LIBOBJ)
 
-target-lib: port_dir ogr_dir core_dir frmts_dir dll
+target-lib: port_dir ogr_dir core_dir frmts_dir gnm_dir dll
 
 clean:	
 	cd port
@@ -112,6 +112,11 @@ core_dir:
 	$(MAKE) /f makefile.vc
 	cd ..
 
+gnm_dir:
+	cd gnm
+	$(MAKE) /f makefile.vc
+	cd ..
+    
 frmts_dir:
 	cd frmts
 	$(MAKE) /f makefile.vc
